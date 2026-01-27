@@ -1,0 +1,5 @@
+
+{
+  "name": "SecureAuth React Demo",
+  "description": "A high-end authentication demo using React, Tailwind CSS, and React Router, featuring registration, login, and protected routes with a mock backend service layer."
+}
