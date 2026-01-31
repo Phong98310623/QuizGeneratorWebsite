@@ -1,0 +1,37 @@
+from rest_framework import serializers
+from .mongo_models import User
+
+class UserSerializer(serializers.Serializer):
+    id = serializers.CharField(source='_id', read_only=True)
+    username = serializers.CharField()
+    email = serializers.EmailField()
+    role = serializers.CharField()
+    total_score = serializers.IntegerField()
+    created_at = serializers.DateTimeField()
+
+class RegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=6)
+
+    def validate_username(self, value):
+        if User.objects(username=value).first():
+            raise serializers.ValidationError('Username already exists')
+        return value
+
+    def validate_email(self, value):
+        if User.objects(email=value).first():
+            raise serializers.ValidationError('Email already exists')
+        return value
+
+    def create(self, validated_data):
+        user = User(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            role='USER',
+            status='ACTIVE',
+            total_score=0
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user

@@ -1,3 +1,2 @@
-from django.db import models
-
-# Create your models here.
+# MongoDB models for accounts app
+# See mongo_models.py for the actual MongoDB documents
