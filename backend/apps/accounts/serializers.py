@@ -2,12 +2,19 @@ from rest_framework import serializers
 from .mongo_models import User
 
 class UserSerializer(serializers.Serializer):
-    id = serializers.CharField(source='_id', read_only=True)
+    id = serializers.SerializerMethodField()
     username = serializers.CharField()
     email = serializers.EmailField()
     role = serializers.CharField()
     total_score = serializers.IntegerField()
-    created_at = serializers.DateTimeField()
+    created_at = serializers.SerializerMethodField()
+
+    def get_id(self, obj):
+        return str(obj.pk) if obj.pk else str(obj.id)
+
+    def get_created_at(self, obj):
+        dt = getattr(obj, 'created_at', None)
+        return dt.isoformat() if dt else None
 
 class RegisterSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)

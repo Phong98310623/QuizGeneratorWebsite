@@ -1,79 +1,104 @@
-
 import { User, ApiResponse } from '../types';
 
-/**
- * LƯU Ý CHO DEVELOPER:
- * File này hiện đang giả lập (mock) các API gọi đến Node/Express backend.
- * Các phần có comment "DATABASE LOGIC" là nơi bạn sẽ thay thế bằng 
- * lệnh gọi fetch() hoặc axios() đến server Express thực tế.
- */
+const API_BASE_URL = 'http://localhost:8000';
 
-const MOCK_DELAY = 800;
+/** Map Django user response to frontend User */
+const mapDjangoUser = (data: Record<string, unknown>): User => ({
+  id: String(data.id ?? data._id ?? ''),
+  email: String(data.email ?? ''),
+  fullName: String(data.username ?? data.email ?? ''),
+  createdAt: String(data.created_at ?? new Date().toISOString()),
+});
 
-// Giả lập database bằng localStorage để demo tính năng functional
-const getMockDB = (): User[] => {
-  const data = localStorage.getItem('mock_users');
-  return data ? JSON.parse(data) : [];
+/** Parse response body - tránh lỗi khi server trả HTML thay vì JSON */
+const parseResponse = async (response: Response): Promise<unknown> => {
+  const text = await response.text();
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    if (response.ok) return null;
+    return {
+      detail:
+        response.status === 404
+          ? 'API không tồn tại. Kiểm tra backend đã chạy tại http://localhost:8000'
+          : `Lỗi server ${response.status}`,
+    };
+  }
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return { detail: 'Invalid JSON response' };
+  }
 };
 
-const saveMockDB = (users: User[]) => {
-  localStorage.setItem('mock_users', JSON.stringify(users));
+/** Parse Django/DRF error response to string */
+const parseError = (data: unknown): string => {
+  if (typeof data === 'string') return data;
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    if (obj.detail) return String(obj.detail);
+    const messages: string[] = [];
+    for (const [, val] of Object.entries(obj)) {
+      if (Array.isArray(val)) messages.push(...val.map(String));
+      else if (val) messages.push(String(val));
+    }
+    if (messages.length) return messages.join('. ');
+  }
+  return 'Đã có lỗi xảy ra';
 };
 
 export const authService = {
   register: async (fullName: string, email: string, password: string): Promise<ApiResponse<User>> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_DELAY));
+    try {
+      const username = email;
+      const response = await fetch(`${API_BASE_URL}/api/accounts/register/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password }),
+      });
 
-    // --- DATABASE LOGIC START ---
-    // Thay thế đoạn này bằng: const response = await fetch('/api/register', { ... })
-    
-    const users = getMockDB();
-    if (users.find(u => u.email === email)) {
-      return { success: false, error: "Email đã tồn tại trong hệ thống!" };
+      const data = await parseResponse(response);
+
+      if (!response.ok) {
+        return { success: false, error: parseError(data) };
+      }
+
+      return { success: true, data: mapDjangoUser((data ?? {}) as Record<string, unknown>) };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể kết nối đến server',
+      };
     }
-
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      fullName,
-      createdAt: new Date().toISOString()
-    };
-
-    users.push(newUser);
-    saveMockDB(users);
-    // --- DATABASE LOGIC END ---
-
-    return { success: true, data: newUser };
   },
 
   login: async (email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_DELAY));
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/accounts/login/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email, password }),
+      });
 
-    // --- DATABASE LOGIC START ---
-    // Thay thế đoạn này bằng: const response = await fetch('/api/login', { ... })
-    
-    const users = getMockDB();
-    const user = users.find(u => u.email === email);
-    
-    // Ở bản demo này, mọi password đều được chấp nhận nếu email tồn tại
-    if (!user) {
-      return { success: false, error: "Email hoặc mật khẩu không đúng!" };
+      const data = await parseResponse(response);
+
+      if (!response.ok) {
+        return { success: false, error: parseError(data) };
+      }
+
+      const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+      const user = mapDjangoUser((payload.user ?? payload) as Record<string, unknown>);
+      const token = String(payload.access ?? payload.token ?? '');
+
+      return { success: true, data: { user, token } };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể kết nối đến server',
+      };
     }
-    // --- DATABASE LOGIC END ---
-
-    return { 
-      success: true, 
-      data: { 
-        user, 
-        token: "mock-jwt-token-" + user.id 
-      } 
-    };
   },
 
   logout: async (): Promise<void> => {
-    // --- DATABASE LOGIC START ---
-    // Gọi API xóa session/cookie nếu cần
-    await new Promise(resolve => setTimeout(resolve, 300));
-    // --- DATABASE LOGIC END ---
-  }
+    // JWT không cần gọi API logout - token sẽ hết hạn
+  },
 };

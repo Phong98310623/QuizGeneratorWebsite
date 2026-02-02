@@ -38,6 +38,7 @@ MONGODB_DATABASES = {
 }
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -45,7 +46,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
 ]
 
 TEMPLATES = [
@@ -68,22 +68,55 @@ ROOT_URLCONF = 'config.urls'
 
 # Cấu hình Custom User Model - Sử dụng MongoDB, không dùng Django default
 # AUTH_USER_MODEL = 'accounts.User'  # Được lưu trong MongoDB thay vì SQLite
-
+# DEBUG = False 
+DEBUG = True
 # Cấu hình DRF
+DEFAULT_RENDERERS = (
+    'rest_framework.renderers.JSONRenderer',
+)
+
+if DEBUG:
+    DEFAULT_RENDERERS = DEFAULT_RENDERERS + (
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    )
+else:
+    pass  # Use JSON-only when DEBUG=False
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+        'apps.accounts.authentication.MongoJWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': DEFAULT_RENDERERS,
 }
+
+
+
 
 # Cấu hình JWT
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
-DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# CORS - Cho phép frontend gọi API
+CORS_ALLOW_ALL_ORIGINS = True  # Dev: cho phép mọi origin
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'origin',
+    'user-agent',
+]
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
