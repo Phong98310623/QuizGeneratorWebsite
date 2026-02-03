@@ -8,6 +8,28 @@ from .mongo_models import User
 class MongoJWTAuthentication(JWTAuthentication):
     """Xác thực JWT và lấy User từ MongoDB thay vì Django User"""
 
+    def authenticate(self, request):
+        """Override authenticate để xử lý DEBUG mode"""
+        print(f"[MongoJWTAuthentication] authenticate called, DEBUG={settings.DEBUG}")
+        
+        # Trong DEBUG mode, nếu không có token hoặc token invalid, return None
+        # để permission class xử lý (DebugOrAuthenticated sẽ cho phép)
+        try:
+            result = super().authenticate(request)
+            if result:
+                print(f"[MongoJWTAuthentication] Authentication successful")
+            else:
+                print(f"[MongoJWTAuthentication] Authentication returned None")
+            return result
+        except Exception as e:
+            print(f"[MongoJWTAuthentication] Authentication exception: {type(e).__name__}: {str(e)}")
+            # Trong DEBUG mode, không raise exception, return None để permission class xử lý
+            if settings.DEBUG:
+                print(f"[MongoJWTAuthentication] DEBUG mode: returning None instead of raising exception")
+                return None
+            # Ngoài DEBUG mode, raise exception như bình thường
+            raise
+
     def get_user(self, validated_token):
         print("[MongoJWTAuthentication] get_user called")
         print(f"[MongoJWTAuthentication] validated_token type: {type(validated_token)}")
@@ -54,7 +76,7 @@ class MongoJWTAuthentication(JWTAuthentication):
             
             # Đảm bảo MongoDB đã được connect
             import mongoengine as me
-            from django.conf import settings
+            # settings đã được import ở đầu file, không cần import lại
             try:
                 # Kiểm tra xem MongoDB đã được connect chưa
                 try:
@@ -135,11 +157,16 @@ class MongoJWTAuthentication(JWTAuthentication):
                 raise AuthenticationFailed('User account is pending approval')
             
             return user
-        except (InvalidToken, AuthenticationFailed):
+        except (InvalidToken, AuthenticationFailed) as auth_error:
+            print(f"[MongoJWTAuthentication] Authentication error (re-raising): {auth_error}")
             raise
         except Exception as e:
             import traceback
+            error_traceback = traceback.format_exc()
+            print(f"[MongoJWTAuthentication] Unexpected error in get_user: {type(e).__name__}: {str(e)}")
             if settings.DEBUG:
-                print(f"[DEBUG] Authentication error: {str(e)}")
-                print(traceback.format_exc())
-            raise InvalidToken(f'Invalid token: {str(e)}')
+                print(f"[MongoJWTAuthentication] Full traceback:")
+                print(error_traceback)
+            # Đảm bảo error message không rỗng
+            error_msg = str(e) if str(e) else f"{type(e).__name__} occurred"
+            raise InvalidToken(f'Invalid token: {error_msg}')

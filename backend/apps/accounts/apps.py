@@ -18,8 +18,8 @@ class AccountsConfig(AppConfig):
                 connectTimeoutMS=30000,
                 serverSelectionTimeoutMS=30000,
             )
-            print("✓ [Accounts] MongoDB connected successfully")
+            print("[Accounts] MongoDB connected successfully")
         except Exception as e:
-            print(f"✗ [Accounts] MongoDB connection error: {e}")
+            print(f"[Accounts] MongoDB connection error: {e}")
             import traceback
             traceback.print_exc()

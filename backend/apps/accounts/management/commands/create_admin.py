@@ -55,10 +55,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Kết nối MongoDB trước
+        # Connect to MongoDB first
         if not connect_mongodb():
             self.stdout.write(
-                self.style.ERROR('❌ Không thể kết nối MongoDB. Vui lòng kiểm tra cấu hình.')
+                self.style.ERROR('Cannot connect to MongoDB. Please check configuration.')
             )
             return
 
@@ -67,13 +67,13 @@ class Command(BaseCommand):
         password = options['password']
         role = options['role']
 
-        # Kiểm tra xem user đã tồn tại chưa
+        # Check if user already exists
         existing_user = User.objects(username=username).first()
         if existing_user:
             self.stdout.write(
-                self.style.WARNING(f'User với username "{username}" đã tồn tại!')
+                self.style.WARNING(f'User with username "{username}" already exists!')
             )
-            # Cập nhật user thành ADMIN nếu chưa phải
+            # Update user to ADMIN if not already
             if existing_user.role != role or existing_user.status != 'ACTIVE':
                 existing_user.role = role
                 existing_user.status = 'ACTIVE'
@@ -81,32 +81,52 @@ class Command(BaseCommand):
                 existing_user.save()
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'Đã cập nhật user "{username}" thành {role} với status ACTIVE'
+                        f'Updated user "{username}" to {role} with status ACTIVE'
                     )
                 )
             else:
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'User "{username}" đã là {role} với status ACTIVE'
+                        f'User "{username}" is already {role} with status ACTIVE'
                     )
                 )
             return
 
-        # Kiểm tra email đã tồn tại chưa
+        # Check if email already exists
         existing_email = User.objects(email=email).first()
         if existing_email:
             self.stdout.write(
-                self.style.WARNING(f'User với email "{email}" đã tồn tại!')
+                self.style.WARNING(f'User with email "{email}" already exists!')
             )
+            # Update user to ADMIN if not already
+            if existing_email.role != role or existing_email.status != 'ACTIVE':
+                existing_email.role = role
+                existing_email.status = 'ACTIVE'
+                existing_email.set_password(password)
+                existing_email.save()
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Updated user "{existing_email.username}" to {role} with status ACTIVE'
+                    )
+                )
+            else:
+                # Update password anyway
+                existing_email.set_password(password)
+                existing_email.save()
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'User "{existing_email.username}" is already {role} with status ACTIVE. Password updated.'
+                    )
+                )
             return
 
-        # Tạo user mới
+        # Create new user
         try:
             user = User(
                 username=username,
                 email=email,
                 role=role,
-                status='ACTIVE',  # Tự động active cho test user
+                status='ACTIVE',  # Auto active for test user
                 total_score=0
             )
             user.set_password(password)
@@ -114,7 +134,7 @@ class Command(BaseCommand):
 
             self.stdout.write(
                 self.style.SUCCESS(
-                    f'✅ Đã tạo {role} test user thành công!\n'
+                    f'Successfully created {role} test user!\n'
                     f'   Username: {username}\n'
                     f'   Email: {email}\n'
                     f'   Password: {password}\n'
@@ -124,5 +144,5 @@ class Command(BaseCommand):
             )
         except Exception as e:
             self.stdout.write(
-                self.style.ERROR(f'❌ Lỗi khi tạo user: {str(e)}')
+                self.style.ERROR(f'Error creating user: {str(e)}')
             )

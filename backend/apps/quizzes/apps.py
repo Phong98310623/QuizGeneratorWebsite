@@ -20,9 +20,9 @@ class QuizzesConfig(AppConfig):
                         connectTimeoutMS=30000,
                         serverSelectionTimeoutMS=30000,
                     )
-                    print("✓ MongoDB connected successfully")
+                    print("[Quizzes] MongoDB connected successfully")
                 except Exception as e:
-                    print(f"✗ MongoDB connection error: {e}")
+                    print(f"[Quizzes] MongoDB connection error: {e}")
             
             # Kết nối MongoDB trong background thread để không block Django
             thread = threading.Thread(target=connect_mongodb, daemon=True)
