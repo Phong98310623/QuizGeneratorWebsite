@@ -10,8 +10,8 @@ class User(Document):
     email = EmailField(required=True, unique=True)
     password = StringField(required=True)
     
-    role = StringField(choices=['USER', 'ADMIN'], default='USER')
-    status = StringField(choices=['ACTIVE', 'BLOCKED'], default='ACTIVE')
+    role = StringField(choices=['USER', 'ADMIN', 'MOD'], default='USER')
+    status = StringField(choices=['ACTIVE', 'BLOCKED', 'PENDING'], default='ACTIVE')
     total_score = IntField(default=0)
     
     created_at = DateTimeField(default=datetime.utcnow)
