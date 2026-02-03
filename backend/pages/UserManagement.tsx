@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MoreVertical, Shield, ShieldCheck, Ban, CheckCircle, Search, Filter, Loader2, AlertCircle } from 'lucide-react';
+import { MoreVertical, Shield, ShieldCheck, Ban, CheckCircle, Search, Filter, Loader2, AlertCircle, X } from 'lucide-react';
 import { User, UserRole, UserStatus } from '../types';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
@@ -33,6 +33,10 @@ const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [blockReason, setBlockReason] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
   const { token } = useAdminAuth();
 
   // Fetch users from API
@@ -74,17 +78,25 @@ const UserManagement: React.FC = () => {
     fetchUsers();
   }, [token]);
 
-  const toggleStatus = async (id: string) => {
+  const handleBlockClick = (user: User) => {
+    if (user.status === UserStatus.ACTIVE) {
+      // Show modal for blocking
+      setSelectedUser(user);
+      setBlockReason('');
+      setShowBlockModal(true);
+    } else {
+      // Direct unblock without modal
+      toggleStatus(user.email, UserStatus.ACTIVE, '');
+    }
+  };
+
+  const toggleStatus = async (email: string, newStatus: UserStatus, reason: string = '') => {
     if (!token) {
       setError('Authentication required');
       return;
     }
 
-    const user = users.find(u => u._id === id);
-    if (!user) return;
-
-    const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.BLOCKED : UserStatus.ACTIVE;
-
+    setIsUpdating(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/accounts/admin/users/status/`, {
         method: 'POST',
@@ -93,8 +105,9 @@ const UserManagement: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: id,
+          email: email,
           status: newStatus === UserStatus.ACTIVE ? 'ACTIVE' : 'BLOCKED',
+          reason: reason,
         }),
       });
 
@@ -105,14 +118,32 @@ const UserManagement: React.FC = () => {
 
       // Update local state
       setUsers(users.map(u => 
-        u._id === id 
+        u.email === email 
           ? { ...u, status: newStatus } 
           : u
       ));
+
+      // Close modal if open
+      if (showBlockModal) {
+        setShowBlockModal(false);
+        setSelectedUser(null);
+        setBlockReason('');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while updating user status');
       console.error('Error updating user status:', err);
+    } finally {
+      setIsUpdating(false);
     }
+  };
+
+  const handleConfirmBlock = () => {
+    if (!selectedUser) return;
+    if (!blockReason.trim()) {
+      setError('Please provide a reason for blocking this user');
+      return;
+    }
+    toggleStatus(selectedUser.email, UserStatus.BLOCKED, blockReason.trim());
   };
 
   const filteredUsers = users.filter(u => 
@@ -227,12 +258,13 @@ const UserManagement: React.FC = () => {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button 
-                        onClick={() => toggleStatus(user._id)}
+                        onClick={() => handleBlockClick(user)}
+                        disabled={isUpdating}
                         className={`p-2 rounded-lg transition-colors ${
                           user.status === UserStatus.ACTIVE 
                             ? 'text-rose-600 hover:bg-rose-50' 
                             : 'text-emerald-600 hover:bg-emerald-50'
-                        }`}
+                        } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title={user.status === UserStatus.ACTIVE ? 'Block User' : 'Unblock User'}
                       >
                         {user.status === UserStatus.ACTIVE ? <Ban size={18} /> : <CheckCircle size={18} />}
@@ -247,6 +279,86 @@ const UserManagement: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Block User Modal */}
+      {showBlockModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-slate-900">Block User</h3>
+              <button
+                onClick={() => {
+                  setShowBlockModal(false);
+                  setSelectedUser(null);
+                  setBlockReason('');
+                  setError(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-slate-600 mb-2">
+                You are about to block the following user:
+              </p>
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="font-semibold text-slate-900">{selectedUser.username}</p>
+                <p className="text-xs text-slate-500">{selectedUser.email}</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Reason for blocking <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Enter the reason for blocking this user..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+                rows={4}
+              />
+            </div>
+
+            {error && (
+              <div className="mb-4 bg-rose-50 border border-rose-200 rounded-lg p-3">
+                <p className="text-sm text-rose-800">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowBlockModal(false);
+                  setSelectedUser(null);
+                  setBlockReason('');
+                  setError(null);
+                }}
+                disabled={isUpdating}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmBlock}
+                disabled={isUpdating || !blockReason.trim()}
+                className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    Blocking...
+                  </>
+                ) : (
+                  'Confirm Block'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -291,12 +291,14 @@ class UserStatusUpdateView(APIView):
         else:
             print(f"[UserStatusUpdateView] DEBUG mode: bypassing authentication check")
 
-        user_id = request.data.get('user_id')
+        # Nhận email thay vì user_id
+        user_email = request.data.get('email') or request.data.get('user_email')
         new_status = request.data.get('status')  # 'ACTIVE' or 'BLOCKED'
+        reason = request.data.get('reason', '')  # Lý do block (optional)
 
-        if not user_id or not new_status:
+        if not user_email or not new_status:
             return Response({
-                'detail': 'user_id and status are required'
+                'detail': 'email and status are required'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if new_status not in ['ACTIVE', 'BLOCKED']:
@@ -305,8 +307,9 @@ class UserStatusUpdateView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            print(f"[UserStatusUpdateView] Updating user {user_id} to status {new_status}")
-            user = User.objects(id=user_id).first()
+            print(f"[UserStatusUpdateView] Updating user with email {user_email} to status {new_status}")
+            # Tìm user theo email
+            user = User.objects(email=user_email).first()
             if not user:
                 return Response({
                     'detail': 'User not found'
@@ -314,7 +317,10 @@ class UserStatusUpdateView(APIView):
 
             user.status = new_status
             user.save()
-            print(f"[UserStatusUpdateView] Successfully updated user {user.username} to {new_status}")
+            print(f"[UserStatusUpdateView] Successfully updated user {user.username} ({user.email}) to {new_status}")
+            if reason:
+                print(f"[UserStatusUpdateView] Block reason: {reason}")
+            
             return Response({
                 'message': f'User {user.username} status updated to {new_status}',
                 'user': UserSerializer(user).data

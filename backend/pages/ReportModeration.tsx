@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AlertCircle, 
   CheckCircle, 
@@ -11,39 +11,120 @@ import {
 } from 'lucide-react';
 import { Report, ReportStatus } from '../types';
 import { GoogleGenAI } from "@google/genai";
+import { useAdminAuth } from '../context/AdminAuthContext';
 
-const MOCK_REPORTS: Report[] = [
-  { 
-    _id: 'R1', 
-    reporter_id: 'U1', 
-    reporter_name: 'Alice', 
-    question_id: 'Q1', 
-    reason: 'The correct answer is actually B, not A. Current explanation is misleading.', 
-    status: ReportStatus.PENDING, 
-    created_at: '2024-03-20T10:00:00Z' 
-  },
-  { 
-    _id: 'R2', 
-    reporter_id: 'U5', 
-    reporter_name: 'Bob', 
-    target_user_id: 'U10', 
-    target_name: 'SpammerBot', 
-    reason: 'This user is posting duplicate spam questions repeatedly.', 
-    status: ReportStatus.PENDING, 
-    created_at: '2024-03-20T11:30:00Z' 
-  },
-];
+const API_BASE_URL = 'http://localhost:8000';
+
+// Map API response to Report type
+const mapApiReportToReport = (apiReport: any): Report => {
+  let status: ReportStatus;
+  if (apiReport.status === 'PENDING') {
+    status = ReportStatus.PENDING;
+  } else if (apiReport.status === 'RESOLVED') {
+    status = ReportStatus.RESOLVED;
+  } else {
+    status = ReportStatus.REJECTED;
+  }
+
+  return {
+    _id: apiReport.id || apiReport._id,
+    reporter_id: apiReport.reporter_id,
+    target_user_id: apiReport.target_user_id || undefined,
+    question_id: apiReport.question_id || undefined,
+    reason: apiReport.reason,
+    status,
+    resolved_by: apiReport.resolved_by || undefined,
+    created_at: apiReport.created_at || new Date().toISOString(),
+    resolved_at: apiReport.resolved_at || undefined,
+    reporter_name: apiReport.reporter_name || 'Unknown',
+    target_name: apiReport.target_name || undefined,
+  };
+};
 
 const ReportModeration: React.FC = () => {
-  const [reports, setReports] = useState<Report[]>(MOCK_REPORTS);
+  const [reports, setReports] = useState<Report[]>([]);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { token } = useAdminAuth();
 
-  const handleResolve = (id: string, status: ReportStatus) => {
-    setReports(reports.map(r => r._id === id ? { ...r, status } : r));
-    setSelectedReport(null);
-    setAiAnalysis(null);
+  // Fetch reports from API
+  useEffect(() => {
+    const fetchReports = async () => {
+      if (!token) {
+        setError('Authentication required');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(`${API_BASE_URL}/api/reports/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Failed to fetch reports' }));
+          throw new Error(errorData.detail || 'Failed to fetch reports');
+        }
+
+        const data = await response.json();
+        const mappedReports = data.reports.map(mapApiReportToReport);
+        setReports(mappedReports);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching reports');
+        console.error('Error fetching reports:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReports();
+  }, [token]);
+
+  const handleResolve = async (id: string, status: ReportStatus) => {
+    if (!token) {
+      setError('Authentication required');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports/status/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          report_id: id,
+          status: status === ReportStatus.RESOLVED ? 'RESOLVED' : 'REJECTED',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to update report status' }));
+        throw new Error(errorData.detail || 'Failed to update report status');
+      }
+
+      // Update local state
+      setReports(reports.map(r => r._id === id ? { ...r, status } : r));
+      setSelectedReport(null);
+      setAiAnalysis(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while updating report status');
+      console.error('Error updating report status:', err);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const analyzeWithAI = async (report: Report) => {
@@ -68,6 +149,8 @@ const ReportModeration: React.FC = () => {
     }
   };
 
+  const pendingReports = reports.filter(r => r.status === ReportStatus.PENDING);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in zoom-in-95 duration-500">
       <div className="lg:col-span-12">
@@ -75,15 +158,28 @@ const ReportModeration: React.FC = () => {
         <p className="text-slate-500">Moderation requests from the community.</p>
       </div>
 
-      <div className="lg:col-span-5 space-y-4">
-        {reports.filter(r => r.status === ReportStatus.PENDING).length === 0 ? (
+      {error && (
+        <div className="lg:col-span-12 bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="text-rose-600" size={20} />
+          <p className="text-rose-800 text-sm">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="lg:col-span-12 bg-white rounded-2xl border border-slate-200 shadow-sm p-12 flex items-center justify-center">
+          <Loader2 className="animate-spin text-indigo-600" size={32} />
+        </div>
+      ) : (
+        <>
+          <div className="lg:col-span-5 space-y-4">
+            {pendingReports.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center">
             <CheckCircle className="text-emerald-500 mb-3" size={48} />
             <h3 className="font-bold text-slate-900">All clear!</h3>
             <p className="text-slate-500 text-sm">There are no pending reports to review.</p>
           </div>
         ) : (
-          reports.filter(r => r.status === ReportStatus.PENDING).map((report) => (
+          pendingReports.map((report) => (
             <div 
               key={report._id} 
               onClick={() => {
@@ -127,17 +223,32 @@ const ReportModeration: React.FC = () => {
                 <div className="flex gap-2">
                   <button 
                     onClick={() => handleResolve(selectedReport._id, ReportStatus.REJECTED)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-rose-600 bg-white border border-rose-200 rounded-xl hover:bg-rose-50 transition-colors"
+                    disabled={isUpdating}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold text-rose-600 bg-white border border-rose-200 rounded-xl hover:bg-rose-50 transition-colors ${
+                      isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
                     <XCircle size={18} />
                     Reject
                   </button>
                   <button 
                     onClick={() => handleResolve(selectedReport._id, ReportStatus.RESOLVED)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
+                    disabled={isUpdating}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all ${
+                      isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
-                    <CheckCircle size={18} />
-                    Take Action
+                    {isUpdating ? (
+                      <>
+                        <Loader2 className="animate-spin" size={18} />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={18} />
+                        Take Action
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -206,6 +317,8 @@ const ReportModeration: React.FC = () => {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };

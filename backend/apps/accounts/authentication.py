@@ -40,8 +40,18 @@ class MongoJWTAuthentication(JWTAuthentication):
             # Chúng ta đã thêm 'user_id' vào token trong views.py
             
             # Debug: In ra toàn bộ token payload
-            print(f"[MongoJWTAuthentication] Full token payload: {dict(validated_token)}")
-            print(f"[MongoJWTAuthentication] Token payload keys: {list(validated_token.keys())}")
+            # Không dùng dict() vì sẽ gây KeyError, dùng payload trực tiếp
+            try:
+                payload_dict = validated_token.payload if hasattr(validated_token, 'payload') else {}
+                print(f"[MongoJWTAuthentication] Full token payload: {payload_dict}")
+                print(f"[MongoJWTAuthentication] Token payload keys: {list(payload_dict.keys())}")
+            except Exception as e:
+                print(f"[MongoJWTAuthentication] Could not print token payload: {e}")
+                # Thử cách khác
+                try:
+                    print(f"[MongoJWTAuthentication] Token payload (direct access): {getattr(validated_token, 'payload', 'N/A')}")
+                except:
+                    pass
             
             # Thử lấy user_id từ nhiều nguồn khác nhau
             user_id = None

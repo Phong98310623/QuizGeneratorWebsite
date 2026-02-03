@@ -1,8 +1,9 @@
 from django.urls import path
-from . import views
+from .views import ReportListView, ReportStatusUpdateView
 
 app_name = 'reports'
 
 urlpatterns = [
-    # Add report endpoints here
+    path('', ReportListView.as_view(), name='report_list'),
+    path('status/', ReportStatusUpdateView.as_view(), name='report_status_update'),
 ]
