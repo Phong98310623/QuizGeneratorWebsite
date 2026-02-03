@@ -7,6 +7,8 @@ from .views import (
     AdminLoginView,
     AdminApproveView,
     PendingAdminListView,
+    UserListView,
+    UserStatusUpdateView,
     VerifyTokenView
 )
 
@@ -21,5 +23,7 @@ urlpatterns = [
     path('admin/login/', AdminLoginView.as_view(), name='admin_login'),
     path('admin/pending/', PendingAdminListView.as_view(), name='admin_pending_list'),
     path('admin/approve/', AdminApproveView.as_view(), name='admin_approve'),
+    path('admin/users/', UserListView.as_view(), name='admin_user_list'),
+    path('admin/users/status/', UserStatusUpdateView.as_view(), name='admin_user_status_update'),
     path('admin/verify-token/', VerifyTokenView.as_view(), name='admin_verify_token'),
 ]

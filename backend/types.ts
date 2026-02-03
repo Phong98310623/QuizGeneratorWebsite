@@ -8,7 +8,8 @@ export enum UserRole {
 
 export enum UserStatus {
   ACTIVE = 'ACTIVE',
-  BLOCKED = 'BLOCKED'
+  BLOCKED = 'BLOCKED',
+  PENDING = 'PENDING'
 }
 
 export interface User {

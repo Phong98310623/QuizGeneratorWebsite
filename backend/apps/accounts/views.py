@@ -217,6 +217,73 @@ class PendingAdminListView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+# Lấy danh sách tất cả users (chỉ ADMIN)
+class UserListView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        # Kiểm tra quyền - chỉ ADMIN mới có thể xem
+        current_user = request.user
+        if not hasattr(current_user, 'role') or current_user.role != 'ADMIN':
+            return Response({
+                'detail': 'Only ADMIN can view all users'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Lấy tất cả users
+        all_users = User.objects.all().order_by('-created_at')
+        users_data = [UserSerializer(user).data for user in all_users]
+
+        return Response({
+            'count': len(users_data),
+            'users': users_data
+        }, status=status.HTTP_200_OK)
+
+
+# Cập nhật status của user (block/unblock)
+class UserStatusUpdateView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        # Kiểm tra quyền - chỉ ADMIN mới có thể cập nhật
+        current_user = request.user
+        if not hasattr(current_user, 'role') or current_user.role != 'ADMIN':
+            return Response({
+                'detail': 'Only ADMIN can update user status'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        new_status = request.data.get('status')  # 'ACTIVE' or 'BLOCKED'
+
+        if not user_id or not new_status:
+            return Response({
+                'detail': 'user_id and status are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_status not in ['ACTIVE', 'BLOCKED']:
+            return Response({
+                'detail': 'status must be "ACTIVE" or "BLOCKED"'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects(id=user_id).first()
+            if not user:
+                return Response({
+                    'detail': 'User not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            user.status = new_status
+            user.save()
+            return Response({
+                'message': f'User {user.username} status updated to {new_status}',
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'detail': f'Error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # Verify token và lấy thông tin user hiện tại
 class VerifyTokenView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
