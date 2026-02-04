@@ -67,13 +67,19 @@ class ReportStatusUpdateView(APIView):
 
         report_id = request.data.get('report_id')
         new_status = request.data.get('status')  # 'RESOLVED' or 'REJECTED'
+        
+        print(f"[ReportStatusUpdateView] Request data: {request.data}")
+        print(f"[ReportStatusUpdateView] Extracted report_id: {report_id} (type: {type(report_id)})")
+        print(f"[ReportStatusUpdateView] Extracted status: {new_status}")
 
         if not report_id or not new_status:
+            print(f"[ReportStatusUpdateView] Missing required fields - report_id: {report_id}, status: {new_status}")
             return Response({
                 'detail': 'report_id and status are required'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if new_status not in ['RESOLVED', 'REJECTED']:
+            print(f"[ReportStatusUpdateView] Invalid status: {new_status}")
             return Response({
                 'detail': 'status must be "RESOLVED" or "REJECTED"'
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -81,29 +87,53 @@ class ReportStatusUpdateView(APIView):
         try:
             print(f"[ReportStatusUpdateView] Updating report {report_id} to status {new_status}")
             from bson import ObjectId
-            report = Report.objects(id=ObjectId(report_id)).first()
+            print(f"[ReportStatusUpdateView] Converting report_id to ObjectId: {report_id}")
+            try:
+                report_id_obj = ObjectId(report_id)
+                print(f"[ReportStatusUpdateView] Converted to ObjectId: {report_id_obj}")
+            except Exception as obj_err:
+                print(f"[ReportStatusUpdateView] Error converting to ObjectId: {obj_err}")
+                raise
+            
+            report = Report.objects(id=report_id_obj).first()
+            print(f"[ReportStatusUpdateView] Found report: {report is not None}")
             if not report:
+                print(f"[ReportStatusUpdateView] Report not found with id: {report_id}")
                 return Response({
                     'detail': 'Report not found'
                 }, status=status.HTTP_404_NOT_FOUND)
+            
+            print(f"[ReportStatusUpdateView] Current report status: {report.status}")
 
             report.status = new_status
+            print(f"[ReportStatusUpdateView] Set report.status to: {new_status}")
+            
             # Set resolved_by nếu có current_user
             if current_user and hasattr(current_user, 'id'):
                 try:
-                    report.resolved_by = ObjectId(str(current_user.id))
-                except:
+                    resolved_by_obj = ObjectId(str(current_user.id))
+                    report.resolved_by = resolved_by_obj
+                    print(f"[ReportStatusUpdateView] Set resolved_by to: {resolved_by_obj}")
+                except Exception as resolve_err:
+                    print(f"[ReportStatusUpdateView] Could not set resolved_by: {resolve_err}")
                     pass  # Nếu không convert được ObjectId thì bỏ qua
             
             from datetime import datetime
             report.resolved_at = datetime.utcnow()
+            print(f"[ReportStatusUpdateView] Set resolved_at to: {report.resolved_at}")
+            
+            print(f"[ReportStatusUpdateView] Saving report...")
             report.save()
+            print(f"[ReportStatusUpdateView] Report saved successfully")
             
             print(f"[ReportStatusUpdateView] Successfully updated report {report_id} to {new_status}")
-            return Response({
+            response_data = {
                 'message': f'Report {report_id} status updated to {new_status}',
-                'report': ReportSerializer(report).data
-            }, status=status.HTTP_200_OK)
+                'report_id': str(report_id),
+                'status': new_status
+            }
+            print(f"[ReportStatusUpdateView] Returning response: {response_data}")
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             print(f"[ReportStatusUpdateView] Error updating report status: {e}")

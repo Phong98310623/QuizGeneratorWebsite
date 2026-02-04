@@ -17,6 +17,8 @@ const API_BASE_URL = 'http://localhost:8000';
 
 // Map API response to Report type
 const mapApiReportToReport = (apiReport: any): Report => {
+  console.log('[ReportModeration] mapApiReportToReport - Input:', apiReport);
+  
   let status: ReportStatus;
   if (apiReport.status === 'PENDING') {
     status = ReportStatus.PENDING;
@@ -26,9 +28,9 @@ const mapApiReportToReport = (apiReport: any): Report => {
     status = ReportStatus.REJECTED;
   }
 
-  return {
-    _id: apiReport.id || apiReport._id,
-    reporter_id: apiReport.reporter_id,
+  const mapped = {
+    _id: apiReport._id || String(apiReport._id),
+    reporter_id: apiReport.reporter_id || String(apiReport.reporter_id),
     target_user_id: apiReport.target_user_id || undefined,
     question_id: apiReport.question_id || undefined,
     reason: apiReport.reason,
@@ -39,6 +41,9 @@ const mapApiReportToReport = (apiReport: any): Report => {
     reporter_name: apiReport.reporter_name || 'Unknown',
     target_name: apiReport.target_name || undefined,
   };
+  
+  console.log('[ReportModeration] mapApiReportToReport - Output:', mapped);
+  return mapped;
 };
 
 const ReportModeration: React.FC = () => {
@@ -77,8 +82,17 @@ const ReportModeration: React.FC = () => {
         }
 
         const data = await response.json();
+        console.log('[ReportModeration] Fetched reports data:', { count: data.count, reportsCount: data.reports?.length });
+        console.log('[ReportModeration] Sample report:', data.reports?.[0]);
+        
         const mappedReports = data.reports.map(mapApiReportToReport);
-        setReports(mappedReports);
+        console.log('[ReportModeration] Mapped reports:', mappedReports.length);
+        console.log('[ReportModeration] Sample mapped report:', mappedReports[0]);
+        
+        // Filter out REJECTED reports from the UI
+        const visibleReports = mappedReports.filter(r => r.status !== ReportStatus.REJECTED);
+        console.log('[ReportModeration] Visible reports (after filtering REJECTED):', visibleReports.length);
+        setReports(visibleReports);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred while fetching reports');
         console.error('Error fetching reports:', err);
@@ -91,12 +105,25 @@ const ReportModeration: React.FC = () => {
   }, [token]);
 
   const handleResolve = async (id: string, status: ReportStatus) => {
+    console.log('[ReportModeration] handleResolve called:', { id, status, token: token ? 'exists' : 'missing' });
+    
     if (!token) {
       setError('Authentication required');
       return;
     }
 
     setIsUpdating(true);
+    const requestBody = {
+      report_id: id,
+      status: status === ReportStatus.RESOLVED ? 'RESOLVED' : 'REJECTED',
+    };
+    
+    console.log('[ReportModeration] Sending request:', {
+      url: `${API_BASE_URL}/api/reports/status/`,
+      method: 'POST',
+      body: requestBody
+    });
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/reports/status/`, {
         method: 'POST',
@@ -104,22 +131,38 @@ const ReportModeration: React.FC = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          report_id: id,
-          status: status === ReportStatus.RESOLVED ? 'RESOLVED' : 'REJECTED',
-        }),
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('[ReportModeration] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Failed to update report status' }));
+        console.error('[ReportModeration] Error response data:', errorData);
         throw new Error(errorData.detail || 'Failed to update report status');
       }
 
-      // Update local state
-      setReports(reports.map(r => r._id === id ? { ...r, status } : r));
+      const responseData = await response.json();
+      console.log('[ReportModeration] Success response data:', responseData);
+
+      // Update local state - remove rejected reports from UI, update resolved ones
+      if (status === ReportStatus.REJECTED) {
+        console.log('[ReportModeration] Removing rejected report from UI:', id);
+        // Remove rejected report from the list (hide it)
+        setReports(reports.filter(r => r._id !== id));
+      } else {
+        console.log('[ReportModeration] Updating resolved report status:', id);
+        // Update resolved report status
+        setReports(reports.map(r => r._id === id ? { ...r, status } : r));
+      }
       setSelectedReport(null);
       setAiAnalysis(null);
     } catch (err) {
+      console.error('[ReportModeration] Exception caught:', err);
       setError(err instanceof Error ? err.message : 'An error occurred while updating report status');
       console.error('Error updating report status:', err);
     } finally {

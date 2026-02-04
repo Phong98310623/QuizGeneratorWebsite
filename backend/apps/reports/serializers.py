@@ -3,12 +3,13 @@ from .mongo_models import Report
 from apps.accounts.mongo_models import User
 
 class ReportSerializer(serializers.Serializer):
-    id = serializers.SerializerMethodField()
+    # Don't define _id here - build it manually in to_representation()
+    # Use SerializerMethodField for all fields to avoid DRF auto-resolving
     reporter_id = serializers.SerializerMethodField()
     target_user_id = serializers.SerializerMethodField()
     question_id = serializers.SerializerMethodField()
-    reason = serializers.CharField()
-    status = serializers.CharField()
+    reason = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
     resolved_by = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
     resolved_at = serializers.SerializerMethodField()
@@ -16,8 +17,29 @@ class ReportSerializer(serializers.Serializer):
     reporter_name = serializers.SerializerMethodField()
     target_name = serializers.SerializerMethodField()
 
-    def get_id(self, obj):
-        return str(obj.pk) if obj.pk else str(obj.id)
+    def to_representation(self, instance):
+        """Build representation manually to avoid DRF trying to resolve 'id' field"""
+        # Build representation completely manually - don't call super()
+        ret = {
+            '_id': str(instance.pk) if instance.pk else None,
+            'reporter_id': self.get_reporter_id(instance),
+            'target_user_id': self.get_target_user_id(instance),
+            'question_id': self.get_question_id(instance),
+            'reason': self.get_reason(instance),
+            'status': self.get_status(instance),
+            'resolved_by': self.get_resolved_by(instance),
+            'created_at': self.get_created_at(instance),
+            'resolved_at': self.get_resolved_at(instance),
+            'reporter_name': self.get_reporter_name(instance),
+            'target_name': self.get_target_name(instance),
+        }
+        return ret
+
+    def get_reason(self, obj):
+        return getattr(obj, 'reason', '')
+
+    def get_status(self, obj):
+        return getattr(obj, 'status', 'PENDING')
 
     def get_reporter_id(self, obj):
         return str(obj.reporter_id) if obj.reporter_id else None
