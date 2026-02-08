@@ -96,8 +96,8 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     }
 
     try {
-      console.log('[AdminAuthContext] Sending verify request to:', 'http://localhost:8000/api/accounts/admin/verify-token/');
-      const response = await fetch('http://localhost:8000/api/accounts/admin/verify-token/', {
+      console.log('[AdminAuthContext] Sending verify request to:', 'http://127.0.0.1:8000/api/accounts/admin/verify-token/');
+      const response = await fetch('http://127.0.0.1:8000/api/accounts/admin/verify-token/', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${currentToken}`,

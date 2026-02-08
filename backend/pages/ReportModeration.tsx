@@ -12,8 +12,7 @@ import {
 import { Report, ReportStatus } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { useAdminAuth } from '../context/AdminAuthContext';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { API_BASE_URL } from '../config';
 
 // Map API response to Report type
 const mapApiReportToReport = (apiReport: any): Report => {

@@ -10,8 +10,7 @@ import {
 } from 'lucide-react';
 import { User, UserStatus } from '../types';
 import { useAdminAuth } from '../context/AdminAuthContext';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { API_BASE_URL } from '../config';
 
 // Map API response to User type (giống UserManagement)
 const mapApiUserToUser = (apiUser: any): User => {

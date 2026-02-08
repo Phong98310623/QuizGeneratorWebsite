@@ -76,12 +76,7 @@ class MyTokenObtainPairView(APIView):
         if user.status == 'BLOCKED':
             return Response({'detail': 'Account is blocked'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Chỉ cho phép USER role đăng nhập qua endpoint này
-        if user.role in ['ADMIN', 'MOD']:
-            return Response({
-                'detail': 'Please use admin login endpoint'
-            }, status=status.HTTP_403_FORBIDDEN)
-
+        # Cho phép tất cả role (USER, ADMIN, MOD) đăng nhập qua endpoint user
         # Tạo JWT tokens với user_id trong payload
         refresh = RefreshToken.for_user(TokenUser(user))
         refresh['user_id'] = str(user.id)

@@ -1,6 +1,6 @@
 import { User, ApiResponse } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 /** Map Django user response to frontend User */
 const mapDjangoUser = (data: Record<string, unknown>): User => ({
@@ -19,7 +19,7 @@ const parseResponse = async (response: Response): Promise<unknown> => {
     return {
       detail:
         response.status === 404
-          ? 'API không tồn tại. Kiểm tra backend đã chạy tại http://localhost:8000'
+          ? 'API không tồn tại. Kiểm tra backend đã chạy tại http://127.0.0.1:8000'
           : `Lỗi server ${response.status}`,
     };
   }
@@ -76,7 +76,7 @@ export const authService = {
       const response = await fetch(`${API_BASE_URL}/api/accounts/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, password }),
+        body: JSON.stringify({ username: email.trim(), password }),
       });
 
       const data = await parseResponse(response);

@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { MoreVertical, Shield, ShieldCheck, Ban, CheckCircle, Search, Filter, Loader2, AlertCircle, X } from 'lucide-react';
 import { User, UserRole, UserStatus } from '../types';
 import { useAdminAuth } from '../context/AdminAuthContext';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { API_BASE_URL } from '../config';
 
 // Map API response to User type
 const mapApiUserToUser = (apiUser: any): User => {

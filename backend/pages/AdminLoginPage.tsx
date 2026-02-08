@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import { API_BASE_URL } from '../config';
 
 const AdminLoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -24,7 +25,7 @@ const AdminLoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/accounts/admin/login/', {
+      const response = await fetch(`${API_BASE_URL}/api/accounts/admin/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
