@@ -68,6 +68,9 @@ const LoginPage: React.FC = () => {
 
           <button
             type="submit"
+            onClick={() => {
+              console.log("Login button clicked");
+            }}
             disabled={loading}
             className={`w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition-colors flex items-center justify-center ${
               loading ? 'opacity-70 cursor-not-allowed' : ''

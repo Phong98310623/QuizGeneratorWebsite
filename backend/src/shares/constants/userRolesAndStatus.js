@@ -1,0 +1,10 @@
+const USER_STATUS = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  BANNED: 'BANNED'
+};
+
+const USER_ROLES = {
+  ADMIN: 'ADMIN',
+  USER: 'USER'
+};
