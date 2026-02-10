@@ -2,8 +2,7 @@
 .env
 .env.local
 
-# Ignore node modules and distribution folders
-dist/
+# Ignore node modules
 node_modules/
 
 # Ignore log files
