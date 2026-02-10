@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 // Hàm tạo JWT Token
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE,
+        expiresIn: process.env.JWT_EXPIRES_IN,
     });
 };
 
@@ -43,12 +43,14 @@ const loginUser = async (loginData) => {
     // Tìm user theo email
     const user = await User.findOne({ email });
     if (!user) {
+        console.error('No user found with email:', email);
         throw new Error('Email hoặc mật khẩu không đúng');
     }
 
     // So sánh password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+        console.error('Password mismatch for user:', user._id);
         throw new Error('Email hoặc mật khẩu không đúng');
     }
 
