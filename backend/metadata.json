@@ -1,8 +1,0 @@
-{
-  "name": "QuizMaster Admin Pro",
-  "description": "A high-performance, professional admin dashboard for managing quiz systems, featuring user management, report handling, content moderation, and AI-powered insights.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ]
-}

@@ -1,6 +1,6 @@
 import { User, ApiResponse } from '../types';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = process.env.API_BASE_URL || "";
 
 /** Map Django user response to frontend User */
 const mapDjangoUser = (data: Record<string, unknown>): User => ({
@@ -19,7 +19,7 @@ const parseResponse = async (response: Response): Promise<unknown> => {
     return {
       detail:
         response.status === 404
-          ? 'API không tồn tại. Kiểm tra backend đã chạy tại http://127.0.0.1:8000'
+          ? 'API không tồn tại. Kiểm tra backend đã chạy tại http://127.0.0.1:3000'
           : `Lỗi server ${response.status}`,
     };
   }
@@ -50,7 +50,7 @@ export const authService = {
   register: async (fullName: string, email: string, password: string): Promise<ApiResponse<User>> => {
     try {
       const username = email;
-      const response = await fetch(`${API_BASE_URL}/api/accounts/register/`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
@@ -73,7 +73,7 @@ export const authService = {
 
   login: async (email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/accounts/login/`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: email.trim(), password }),
