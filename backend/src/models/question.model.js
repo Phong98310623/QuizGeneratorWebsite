@@ -13,6 +13,8 @@ const questionSchema = new mongoose.Schema({
   difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
   explanation: { type: String },
   usedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // user IDs đã dùng/trả lời câu hỏi
+  verified: { type: Boolean, default: false },
+  archived: { type: Boolean, default: false }, // nếu true thì ẩn khỏi UI / không dùng trong quiz
 }, { timestamps: true });
 
 module.exports = mongoose.model('Question', questionSchema, 'questions');

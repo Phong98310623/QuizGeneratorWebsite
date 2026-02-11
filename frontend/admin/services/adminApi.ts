@@ -232,5 +232,70 @@ export const adminApi = {
 
     return Array.isArray(data) ? data : data?.data ?? [];
   },
+
+  getQuestionsBySet: async (setId: string, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/sets/${setId}/questions`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await parseJson(response);
+
+    if (!response.ok) {
+      const message =
+        (data && (data.message || data.detail)) ||
+        'Không thể tải danh sách câu hỏi trong bộ';
+      throw new Error(message);
+    }
+
+    return Array.isArray(data) ? data : data?.data ?? [];
+  },
+
+  verifyQuestionSet: async (id: string, verified: boolean, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/sets/${id}/verify`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ verified }),
+    });
+
+    const data = await parseJson(response);
+
+    if (!response.ok) {
+      const message =
+        (data && (data.message || data.detail)) ||
+        'Không thể cập nhật trạng thái verify cho question set';
+      throw new Error(message);
+    }
+
+    return data?.data ?? data;
+  },
+
+  reviewQuestion: async (id: string, action: 'GOOD' | 'HIDE', token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}/review`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action }),
+    });
+
+    const data = await parseJson(response);
+
+    if (!response.ok) {
+      const message =
+        (data && (data.message || data.detail)) ||
+        'Không thể cập nhật trạng thái câu hỏi';
+      throw new Error(message);
+    }
+
+    return data?.data ?? data;
+  },
 };
 
