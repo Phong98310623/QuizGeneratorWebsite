@@ -22,8 +22,15 @@ const LoginPage: React.FC = () => {
     try {
       const response = await authService.login(email, password);
       if (response.success && response.data) {
-        login(response.data.user, response.data.token);
-        navigate('/dashboard');
+        const { user, token } = response.data;
+        login(user, token);
+
+        // Nếu là admin thì chuyển sang trang admin, ngược lại dashboard user
+        if (user.role === 'ADMIN') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(response.error || 'Đăng nhập thất bại');
       }

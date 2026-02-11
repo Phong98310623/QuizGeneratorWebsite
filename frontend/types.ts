@@ -3,7 +3,9 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
-  createdAt: string;
+  role?: 'ADMIN' | 'USER' | string;
+  status?: 'ACTIVE' | 'INACTIVE' | 'BANNED' | string;
+  createdAt?: string;
 }
 
 export interface AuthState {

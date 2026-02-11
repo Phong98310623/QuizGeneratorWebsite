@@ -2,12 +2,14 @@ import { User, ApiResponse } from '../types';
 
 const API_BASE_URL = process.env.API_BASE_URL || "";
 
-/** Map Django user response to frontend User */
-const mapDjangoUser = (data: Record<string, unknown>): User => ({
+/** Map backend user response to frontend User */
+const mapBackendUser = (data: Record<string, unknown>): User => ({
   id: String(data.id ?? data._id ?? ''),
   email: String(data.email ?? ''),
   fullName: String(data.username ?? data.email ?? ''),
-  createdAt: String(data.created_at ?? new Date().toISOString()),
+  role: data.role ? String(data.role) : undefined,
+  status: data.status ? String(data.status) : undefined,
+  createdAt: data.createdAt ? String(data.createdAt) : new Date().toISOString(),
 });
 
 /** Parse response body - tránh lỗi khi server trả HTML thay vì JSON */
@@ -62,7 +64,7 @@ export const authService = {
         return { success: false, error: parseError(data) };
       }
 
-      return { success: true, data: mapDjangoUser((data ?? {}) as Record<string, unknown>) };
+      return { success: true, data: mapBackendUser(((data as any)?.data ?? data ?? {}) as Record<string, unknown>) };
     } catch (err) {
       return {
         success: false,
@@ -86,8 +88,9 @@ export const authService = {
       }
 
       const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
-      const user = mapDjangoUser((payload.user ?? payload) as Record<string, unknown>);
-      const token = String(payload.access ?? payload.token ?? '');
+      const rawUser = (payload.data ?? payload.user ?? payload) as Record<string, unknown>;
+      const user = mapBackendUser(rawUser);
+      const token = String(payload.access ?? payload.token ?? rawUser.token ?? '');
 
       return { success: true, data: { user, token } };
     } catch (err) {

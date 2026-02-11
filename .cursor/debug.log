@@ -1,43 +1,17 @@
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://localhost:8000/api/accounts/login/","email":"use***"},"timestamp":1770533812244,"hypothesisId":"H1"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770533812243,"hypothesisId":"H4"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770533814619,"hypothesisId":"H4"}
-{"location":"api.ts:login:catch","message":"Login catch","data":{"errName":"TypeError","errMsg":"Failed to fetch"},"timestamp":1770533814618,"hypothesisId":"H2"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770533879786,"hypothesisId":"H4"}
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://localhost:8000/api/accounts/login/","email":"use***"},"timestamp":1770533879787,"hypothesisId":"H1"}
-{"location":"api.ts:login:fetchDone","message":"Fetch completed","data":{"ok":false,"status":401,"url":"http://localhost:8000/api/accounts/login/"},"timestamp":1770533881249,"hypothesisId":"H1"}
-{"location":"api.ts:login:parseDone","message":"Parse completed","data":{"hasData":true},"timestamp":1770533881250,"hypothesisId":"H3"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770533881251,"hypothesisId":"H4"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770533885141,"hypothesisId":"H4"}
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://localhost:8000/api/accounts/login/","email":"use***"},"timestamp":1770533885141,"hypothesisId":"H1"}
-{"location":"api.ts:login:fetchDone","message":"Fetch completed","data":{"ok":false,"status":401,"url":"http://localhost:8000/api/accounts/login/"},"timestamp":1770533885366,"hypothesisId":"H1"}
-{"location":"api.ts:login:parseDone","message":"Parse completed","data":{"hasData":true},"timestamp":1770533885369,"hypothesisId":"H3"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770533885370,"hypothesisId":"H4"}
-{"location":"AuthContext.tsx:useEffect","message":"Auth init","data":{},"timestamp":1770533889440,"hypothesisId":"H5"}
-{"location":"AuthContext.tsx:useEffect","message":"Auth init","data":{},"timestamp":1770533889442,"hypothesisId":"H5"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770533895504,"hypothesisId":"H4"}
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://localhost:8000/api/accounts/login/","email":"use***"},"timestamp":1770533895506,"hypothesisId":"H1"}
-{"location":"api.ts:login:fetchDone","message":"Fetch completed","data":{"ok":false,"status":401,"url":"http://localhost:8000/api/accounts/login/"},"timestamp":1770533895601,"hypothesisId":"H1"}
-{"location":"api.ts:login:parseDone","message":"Parse completed","data":{"hasData":true},"timestamp":1770533895604,"hypothesisId":"H3"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770533895605,"hypothesisId":"H4"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770533896977,"hypothesisId":"H4"}
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://localhost:8000/api/accounts/login/","email":"use***"},"timestamp":1770533896978,"hypothesisId":"H1"}
-{"location":"api.ts:login:fetchDone","message":"Fetch completed","data":{"ok":false,"status":401,"url":"http://localhost:8000/api/accounts/login/"},"timestamp":1770533897049,"hypothesisId":"H1"}
-{"location":"api.ts:login:parseDone","message":"Parse completed","data":{"hasData":true},"timestamp":1770533897052,"hypothesisId":"H3"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770533897053,"hypothesisId":"H4"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770533898317,"hypothesisId":"H4"}
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://localhost:8000/api/accounts/login/","email":"use***"},"timestamp":1770533898318,"hypothesisId":"H1"}
-{"location":"api.ts:login:fetchDone","message":"Fetch completed","data":{"ok":false,"status":401,"url":"http://localhost:8000/api/accounts/login/"},"timestamp":1770533898389,"hypothesisId":"H1"}
-{"location":"api.ts:login:parseDone","message":"Parse completed","data":{"hasData":true},"timestamp":1770533898390,"hypothesisId":"H3"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770533898391,"hypothesisId":"H4"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770534046530,"hypothesisId":"H4"}
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://127.0.0.1:8000/api/accounts/login/","email":"use***"},"timestamp":1770534046531,"hypothesisId":"H1"}
-{"location":"api.ts:login:fetchDone","message":"Fetch completed","data":{"ok":false,"status":400,"url":"http://127.0.0.1:8000/api/accounts/login/"},"timestamp":1770534046962,"hypothesisId":"H1"}
-{"location":"api.ts:login:parseDone","message":"Parse completed","data":{"hasData":true},"timestamp":1770534046966,"hypothesisId":"H3"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770534046967,"hypothesisId":"H4"}
-{"location":"LoginPage.tsx:handleSubmit:entry","message":"Submit started","data":{},"timestamp":1770534049129,"hypothesisId":"H4"}
-{"location":"api.ts:login:entry","message":"Login attempt","data":{"url":"http://127.0.0.1:8000/api/accounts/login/","email":"use***"},"timestamp":1770534049130,"hypothesisId":"H1"}
-{"location":"api.ts:login:fetchDone","message":"Fetch completed","data":{"ok":false,"status":400,"url":"http://127.0.0.1:8000/api/accounts/login/"},"timestamp":1770534049163,"hypothesisId":"H1"}
-{"location":"LoginPage.tsx:handleSubmit:afterLogin","message":"Auth response","data":{"success":false,"hasData":false,"hasError":true},"timestamp":1770534049165,"hypothesisId":"H4"}
-{"location":"api.ts:login:parseDone","message":"Parse completed","data":{"hasData":true},"timestamp":1770534049164,"hypothesisId":"H3"}
-{"location":"AuthContext.tsx:useEffect","message":"Auth init","data":{},"timestamp":1770534081375,"hypothesisId":"H5"}
-{"location":"AuthContext.tsx:useEffect","message":"Auth init","data":{},"timestamp":1770534081379,"hypothesisId":"H5"}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":2,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795535156}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":3,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795538174}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":4,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795541192}
+{"location":"db.js:connectDB:entry","message":"MONGO_URI format check","data":{"usesSrv":true,"hostFromUri":"quizgeneratorwebsite.xa9ndq7.mongodb.net","srvHost":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H1","timestamp":1770795558542}
+{"location":"db.js:connectDB:pre-dns","message":"General DNS failed","data":{"code":"ECONNREFUSED"},"hypothesisId":"H4","timestamp":1770795558580}
+{"location":"db.js:connectDB:pre-dns","message":"DNS SRV resolve failed","data":{"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H2","timestamp":1770795558591}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":1,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795558608}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":2,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795561622}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":3,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795564626}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":4,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795567646}
+{"location":"db.js:connectDB:entry","message":"MONGO_URI format check","data":{"usesSrv":true,"hostFromUri":"quizgeneratorwebsite.xa9ndq7.mongodb.net","srvHost":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H1","timestamp":1770795678524}
+{"location":"db.js:connectDB:pre-dns","message":"General DNS failed","data":{"code":"ECONNREFUSED"},"hypothesisId":"H4","timestamp":1770795678557}
+{"location":"db.js:connectDB:pre-dns","message":"DNS SRV resolve failed","data":{"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H2","timestamp":1770795678567}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":1,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795678583}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":2,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795681597}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":3,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795684613}
+{"location":"db.js:connectDB:catch","message":"MongoDB connect error","data":{"attempt":4,"code":"ECONNREFUSED","syscall":"querySrv","hostname":"_mongodb._tcp.quizgeneratorwebsite.xa9ndq7.mongodb.net"},"hypothesisId":"H3","timestamp":1770795687627}

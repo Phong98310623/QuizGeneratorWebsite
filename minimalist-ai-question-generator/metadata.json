@@ -1,5 +1,0 @@
-{
-  "name": "Minimalist AI Question Generator",
-  "description": "Một ứng dụng tối giản giúp tạo bộ câu hỏi trắc nghiệm hoặc tự luận theo chủ đề sử dụng Google Gemini.",
-  "requestFramePermissions": []
-}

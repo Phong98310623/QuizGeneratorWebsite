@@ -33,6 +33,8 @@ const registerUser = async (userData) => {
         _id: user.id,
         username: user.username,
         email: user.email,
+        role: user.role,
+        status: user.status,
         token: generateToken(user.id)
     };
 };
@@ -58,6 +60,8 @@ const loginUser = async (loginData) => {
         _id: user.id,
         username: user.username,
         email: user.email,
+        role: user.role,
+        status: user.status,
         token: generateToken(user.id)
     };
 };

@@ -29,4 +29,6 @@ const userSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-module.exports = mongoose.model('User', userSchema);
+// Database = MONGO_DB_NAME (.env.local), collection = MONGO_USER_COLLECTION (cả đăng nhập + danh sách user)
+const collectionName = process.env.MONGO_USER_COLLECTION || 'users';
+module.exports = mongoose.model('User', userSchema, collectionName);

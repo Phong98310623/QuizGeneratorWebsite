@@ -73,6 +73,18 @@ const banUser = async (id) => {
   return user;
 };
 
+const updateUserStatus = async (id, status) => {
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  user.status = status;
+  await user.save();
+  return user;
+};
+
 module.exports = {
   createUser,
   getAllUsers,
@@ -80,5 +92,6 @@ module.exports = {
   deleteUser,
   deactivateInactiveUsers,
   promoteToAdmin,
-  banUser
+  banUser,
+  updateUserStatus,
 };

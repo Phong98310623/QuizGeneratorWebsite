@@ -12,7 +12,10 @@ export default defineConfig(({ mode }) => {
       plugins: [react()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        // Base URL cho backend Node (dùng trong frontend/services/api.ts & adminApi.ts)
+        // Có thể override bằng biến môi trường API_BASE_URL nếu cần
+        'process.env.API_BASE_URL': JSON.stringify(env.API_BASE_URL || 'http://127.0.0.1:5000'),
       },
       resolve: {
         alias: {

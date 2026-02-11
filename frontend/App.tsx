@@ -5,8 +5,17 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
+import { AdminAuthProvider } from './admin/context/AdminAuthContext';
+import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
+import AdminLayout from './admin/components/Layout';
+import AdminLoginPage from './admin/pages/AdminLoginPage';
+import AdminDashboardPage from './admin/pages/Dashboard';
+import AdminUserManagement from './admin/pages/UserManagement';
+import AdminBlacklist from './admin/pages/Blacklist';
+import AdminContentManagement from './admin/pages/ContentManagement';
+import AdminReportModeration from './admin/pages/ReportModeration';
 
-// Component bảo vệ Route
+// Component bảo vệ Route (user đã đăng nhập)
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -37,6 +46,34 @@ const AppRoutes: React.FC = () => {
             <Dashboard />
           </ProtectedRoute>
         } 
+      />
+      {/* Admin routes */}
+      <Route
+        path="/admin/login"
+        element={
+          <AdminAuthProvider>
+            <AdminLoginPage />
+          </AdminAuthProvider>
+        }
+      />
+      <Route
+        path="/admin/*"
+        element={
+          <AdminAuthProvider>
+            <AdminProtectedRoute>
+              <AdminLayout>
+                <Routes>
+                  <Route path="" element={<AdminDashboardPage />} />
+                  <Route path="users" element={<AdminUserManagement />} />
+                  <Route path="blacklist" element={<AdminBlacklist />} />
+                  <Route path="content" element={<AdminContentManagement />} />
+                  <Route path="reports" element={<AdminReportModeration />} />
+                  <Route path="*" element={<Navigate to="/admin" replace />} />
+                </Routes>
+              </AdminLayout>
+            </AdminProtectedRoute>
+          </AdminAuthProvider>
+        }
       />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<div className="p-10 text-center">404 - Không tìm thấy trang</div>} />
