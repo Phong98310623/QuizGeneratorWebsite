@@ -66,7 +66,26 @@ const loginUser = async (loginData) => {
     };
 };
 
+const updateProfile = async (userId, data) => {
+    const user = await User.findById(userId);
+    if (!user) {
+        throw new Error('User not found');
+    }
+    if (data.username != null && String(data.username).trim()) {
+        user.username = String(data.username).trim();
+    }
+    await user.save();
+    return {
+        _id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+    };
+};
+
 module.exports = {
     registerUser,
-    loginUser
+    loginUser,
+    updateProfile
 };

@@ -1,6 +1,76 @@
 const QuestionSet = require('../models/question_set.model');
 const Question = require('../models/question.model');
 
+/**
+ * POST /api/sets (protect) - User creates a set from generated questions. Body: { title, description?, type?, questions: [...] }
+ * Each question: { content or question, options?: string[] or { text, isCorrect }[], correctAnswer, difficulty?, explanation? }
+ */
+const createSet = async (req, res) => {
+  try {
+    const { title, description, type, questions: rawQuestions } = req.body;
+    if (!title || !Array.isArray(rawQuestions) || rawQuestions.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cần tiêu đề và ít nhất một câu hỏi' });
+    }
+
+    const questionDocs = [];
+    for (const q of rawQuestions) {
+      const content = q.content || q.question || '';
+      if (!content) continue;
+      let options = [];
+      if (Array.isArray(q.options)) {
+        if (typeof q.options[0] === 'string') {
+          const correct = (q.correctAnswer || '').trim();
+          options = q.options.map((text) => ({ text: String(text).trim(), isCorrect: String(text).trim() === correct }));
+        } else {
+          options = q.options.map((o) => ({ text: o.text || o.option || '', isCorrect: !!o.isCorrect }));
+        }
+      }
+      const difficulty = ['easy', 'medium', 'hard'].includes(String(q.difficulty || '').toLowerCase())
+        ? String(q.difficulty).toLowerCase()
+        : 'medium';
+      const doc = await Question.create({
+        content,
+        options: options.length ? options : undefined,
+        correctAnswer: q.correctAnswer ? String(q.correctAnswer).trim() : undefined,
+        difficulty,
+        explanation: q.explanation ? String(q.explanation).trim() : undefined,
+        tags: [],
+      });
+      questionDocs.push(doc._id);
+    }
+
+    if (questionDocs.length === 0) {
+      return res.status(400).json({ success: false, message: 'Không có câu hỏi hợp lệ nào' });
+    }
+
+    const pin = await QuestionSet.generateUniquePin();
+    const set = await QuestionSet.create({
+      title: String(title).trim(),
+      description: description ? String(description).trim() : '',
+      type: type ? String(type).trim() : 'Other',
+      questionIds: questionDocs,
+      verified: false,
+      createdBy: req.user.id,
+      pin,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: set._id.toString(),
+        pin: set.pin,
+        title: set.title,
+        description: set.description || '',
+        type: set.type || 'Other',
+        count: questionDocs.length,
+      },
+    });
+  } catch (error) {
+    console.error('createSet error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi tạo bộ câu hỏi' });
+  }
+};
+
 const getStats = async (req, res) => {
   try {
     const [totalQuestions, totalSets, verifiedSets] = await Promise.all([
@@ -175,4 +245,5 @@ module.exports = {
   getQuestionsBySet,
   updateQuestionSetVerify,
   reviewQuestion,
+  createSet,
 };

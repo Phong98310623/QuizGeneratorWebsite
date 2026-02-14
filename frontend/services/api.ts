@@ -104,4 +104,107 @@ export const authService = {
   logout: async (): Promise<void> => {
     // JWT không cần gọi API logout - token sẽ hết hạn
   },
+
+  updateProfile: async (token: string, data: { username?: string }): Promise<ApiResponse<User>> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      const result = await parseResponse(response);
+      if (!response.ok) {
+        return { success: false, error: parseError(result) };
+      }
+      const raw = (result as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+      return { success: true, data: mapBackendUser(raw ?? {}) };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể kết nối đến server',
+      };
+    }
+  },
+};
+
+export interface QuestionSetMeta {
+  id: string;
+  pin: string | null;
+  title: string;
+  description: string;
+  type: string;
+  count: number;
+}
+
+export interface PlayQuestion {
+  id: string;
+  content: string;
+  options: { text: string; isCorrect?: boolean }[];
+  correctAnswer?: string;
+  difficulty: string;
+  explanation?: string;
+}
+
+export const publicApi = {
+  listSets: async (params?: { type?: string; q?: string; limit?: number; offset?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.type) sp.set('type', params.type);
+    if (params?.q) sp.set('q', params.q);
+    if (params?.limit != null) sp.set('limit', String(params.limit));
+    if (params?.offset != null) sp.set('offset', String(params.offset));
+    const url = `${API_BASE_URL}/api/public/sets${sp.toString() ? `?${sp}` : ''}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi tải danh sách');
+    return data as { data: QuestionSetMeta[]; total: number };
+  },
+
+  getSetByPin: async (pin: string) => {
+    const normalized = String(pin).trim().toUpperCase();
+    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Mã PIN không đúng hoặc bộ câu hỏi không tồn tại');
+    return (data as { data: QuestionSetMeta }).data;
+  },
+
+  getQuestionsByPin: async (pin: string) => {
+    const normalized = String(pin).trim().toUpperCase();
+    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}/questions`);
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi tải câu hỏi');
+    return (data as { data: PlayQuestion[] }).data;
+  },
+};
+
+export interface CreateSetPayload {
+  title: string;
+  description?: string;
+  type?: string;
+  questions: Array<{
+    content?: string;
+    question?: string;
+    options?: string[] | { text: string; isCorrect?: boolean }[];
+    correctAnswer?: string;
+    difficulty?: string;
+    explanation?: string;
+  }>;
+}
+
+export const setsApi = {
+  create: async (token: string, payload: CreateSetPayload) => {
+    const response = await fetch(`${API_BASE_URL}/api/sets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi lưu bộ câu hỏi');
+    return (data as { data: QuestionSetMeta }).data;
+  },
 };

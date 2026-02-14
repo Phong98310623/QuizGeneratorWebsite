@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Difficulty, GeneratedQuestion, QuestionType } from '../types/quiz';
 import { generateQuestions } from '../services/geminiService';
+import { setsApi } from '../services/api';
 import { Button } from './quiz/Button';
 import { Input } from './quiz/Input';
 import { Select } from './quiz/Select';
 import { QuestionCard } from './quiz/QuestionCard';
 
+const difficultyToBackend = (d: Difficulty) => {
+  if (d === Difficulty.EASY) return 'easy';
+  if (d === Difficulty.HARD) return 'hard';
+  return 'medium';
+};
+
 const AIQuestionGenerator: React.FC = () => {
+  const navigate = useNavigate();
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [type, setType] = useState<QuestionType>(QuestionType.MULTIPLE_CHOICE);
@@ -15,6 +24,16 @@ const AIQuestionGenerator: React.FC = () => {
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [saveTitle, setSaveTitle] = useState('');
+  const [saveDescription, setSaveDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedPin, setSavedPin] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSaveTitle((prev) => (prev === '' || prev === topic ? topic : prev));
+  }, [topic]);
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
@@ -46,6 +65,41 @@ const AIQuestionGenerator: React.FC = () => {
     const jsonStr = JSON.stringify(questions, null, 2);
     navigator.clipboard.writeText(jsonStr);
     alert("Đã sao chép dữ liệu JSON vào clipboard!");
+  };
+
+  const handleSaveSet = async () => {
+    if (questions.length === 0) return;
+    if (!saveTitle.trim()) {
+      setSaveError('Vui lòng nhập tên bộ câu hỏi.');
+      return;
+    }
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setSaveError('Bạn cần đăng nhập để lưu bộ câu hỏi.');
+      return;
+    }
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const payload = {
+        title: saveTitle.trim(),
+        description: saveDescription.trim() || undefined,
+        type: type || undefined,
+        questions: questions.map((q) => ({
+          content: q.question,
+          options: q.options && q.options.length > 0 ? q.options : [q.correctAnswer],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || undefined,
+          difficulty: difficultyToBackend(difficulty),
+        })),
+      };
+      const result = await setsApi.create(token, payload);
+      setSavedPin(result.pin || null);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Lỗi khi lưu.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -144,6 +198,50 @@ const AIQuestionGenerator: React.FC = () => {
                 <QuestionCard key={index} data={q} index={index} />
               ))}
             </div>
+
+            {savedPin ? (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                <p className="text-green-800 font-medium mb-1">Đã lưu bộ câu hỏi</p>
+                <p className="text-2xl font-mono font-bold text-green-700 mb-3">{savedPin}</p>
+                <p className="text-sm text-green-600 mb-4">Chia sẻ mã PIN này để người khác vào làm bài.</p>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/play/${encodeURIComponent(savedPin)}`)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Vào làm bài
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h4 className="font-semibold text-slate-800 mb-3">Lưu bộ câu hỏi</h4>
+                <div className="space-y-3 mb-4">
+                  <input
+                    type="text"
+                    value={saveTitle}
+                    onChange={(e) => setSaveTitle(e.target.value)}
+                    placeholder="Tên bộ câu hỏi"
+                    className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <input
+                    type="text"
+                    value={saveDescription}
+                    onChange={(e) => setSaveDescription(e.target.value)}
+                    placeholder="Mô tả (tùy chọn)"
+                    className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {saveError && <p className="text-red-600 text-sm mb-2">{saveError}</p>}
+                <button
+                  type="button"
+                  onClick={handleSaveSet}
+                  disabled={saving}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 text-sm"
+                >
+                  {saving ? 'Đang lưu...' : 'Lưu bộ câu hỏi'}
+                </button>
+              </div>
+            )}
 
             <div className="text-center pt-8 pb-4">
               <p className="text-slate-400 text-sm">Nội dung được tạo bởi AI (Gemini) và có thể cần kiểm chứng.</p>

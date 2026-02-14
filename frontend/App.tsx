@@ -5,6 +5,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
+import ExplorePage from './pages/ExplorePage';
+import CreatePage from './pages/CreatePage';
+import ProfilePage from './pages/ProfilePage';
+import PlayPage from './pages/PlayPage';
+import UserLayout from './components/UserLayout';
 import { AdminAuthProvider } from './admin/context/AdminAuthContext';
 import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
 import AdminLayout from './admin/components/Layout';
@@ -39,14 +44,14 @@ const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
+      <Route path="/" element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="explore" element={<ExplorePage />} />
+        <Route path="create" element={<CreatePage />} />
+        <Route path="profile" element={<ProfilePage />} />
+      </Route>
+      <Route path="/play/:pin" element={<ProtectedRoute><PlayPage /></ProtectedRoute>} />
       {/* Admin routes */}
       <Route
         path="/admin/login"
@@ -75,7 +80,6 @@ const AppRoutes: React.FC = () => {
           </AdminAuthProvider>
         }
       />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<div className="p-10 text-center">404 - Không tìm thấy trang</div>} />
     </Routes>
   );
