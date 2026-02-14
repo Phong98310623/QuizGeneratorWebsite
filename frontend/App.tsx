@@ -24,6 +24,7 @@ import AdminReportModeration from './admin/pages/ReportModeration';
 import UserPreviewPage from './admin/pages/preview/UserPreviewPage';
 import QuestionPreviewPage from './admin/pages/preview/QuestionPreviewPage';
 import SetPreviewPage from './admin/pages/preview/SetPreviewPage';
+import ReportPreviewPage from './admin/pages/preview/ReportPreviewPage';
 
 // Component bảo vệ Route (user đã đăng nhập)
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -83,6 +84,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="preview/user/:id" element={<UserPreviewPage />} />
                   <Route path="preview/question/:id" element={<QuestionPreviewPage />} />
                   <Route path="preview/set/:id" element={<SetPreviewPage />} />
+                  <Route path="preview/report/:id" element={<ReportPreviewPage />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Routes>
               </AdminLayout>

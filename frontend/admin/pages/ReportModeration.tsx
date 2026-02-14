@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Flag,
   Search,
@@ -40,6 +41,7 @@ export interface Report {
 }
 
 const ReportModeration: React.FC = () => {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAdminAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -358,7 +360,11 @@ const ReportModeration: React.FC = () => {
                 </tr>
               ) : (
                 filteredReports.map((report) => (
-                  <tr key={report.id} className="hover:bg-slate-50 transition-colors">
+                  <tr
+                    key={report.id}
+                    onClick={() => navigate(`/admin/preview/report/${report.id}`)}
+                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -367,7 +373,10 @@ const ReportModeration: React.FC = () => {
                         <p className="text-xs text-slate-500">{report.reporterEmail}</p>
                         <button
                           type="button"
-                          onClick={() => handleEntityClick(report)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEntityClick(report);
+                          }}
                           disabled={report.reportedEntityType === 'OTHER'}
                           className={`text-xs font-medium mt-1 text-left block max-w-full truncate ${
                             report.reportedEntityType === 'OTHER'
@@ -398,12 +407,12 @@ const ReportModeration: React.FC = () => {
                         year: 'numeric',
                       })}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => setSelectedReport(report)}
+                          onClick={() => navigate(`/admin/preview/report/${report.id}`)}
                           className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                          title="View details"
+                          title="Xem chi tiết"
                         >
                           <Eye size={18} />
                         </button>

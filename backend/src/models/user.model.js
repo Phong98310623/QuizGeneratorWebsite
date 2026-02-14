@@ -39,7 +39,8 @@ const userSchema = new mongoose.Schema({
         nameid: { type: String, required: true },
         name: { type: String, required: true },
         questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }]
-    }]
+    }],
+    lastNotificationReadAt: { type: Date }
 }, { timestamps: true });
 
 // Database = MONGO_DB_NAME (.env.local), collection = MONGO_USER_COLLECTION (cả đăng nhập + danh sách user)

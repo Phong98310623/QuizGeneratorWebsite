@@ -1,31 +1,23 @@
-const Report = require('../models/report.model');
+const reportService = require('../services/report.service');
+const sse = require('../lib/sse');
 
-/** Tạo report mới (public - người chơi không cần đăng nhập) */
 const createReport = async (req, res) => {
   try {
-    const { reporterName, reporterEmail, reportedEntityType, reportedEntityId, reportedEntityTitle, reason, description } = req.body;
-    const validTypes = ['USER', 'QUIZ', 'CONTENT', 'OTHER'];
-    if (!reporterName || !reporterEmail || !reportedEntityType || !reportedEntityId || !reportedEntityTitle || !reason) {
-      return res.status(400).json({
-        success: false,
-        message: 'Thiếu thông tin: reporterName, reporterEmail, reportedEntityType, reportedEntityId, reportedEntityTitle, reason là bắt buộc',
+    const { report, notification } = await reportService.createReport(req.body, req.user?._id);
+    if (notification) {
+      sse.broadcast({
+        type: 'NEW_NOTIFICATION',
+        payload: {
+          _id: notification._id?.toString?.(),
+          title: notification.title,
+          content: notification.content,
+          icon: notification.icon,
+          type: notification.type,
+          createdAt: notification.createdAt,
+          link: notification.link,
+        },
       });
     }
-    if (!validTypes.includes(reportedEntityType)) {
-      return res.status(400).json({
-        success: false,
-        message: `reportedEntityType phải là một trong: ${validTypes.join(', ')}`,
-      });
-    }
-    const report = await Report.create({
-      reporterName: String(reporterName).trim(),
-      reporterEmail: String(reporterEmail).trim(),
-      reportedEntityType,
-      reportedEntityId: String(reportedEntityId),
-      reportedEntityTitle: String(reportedEntityTitle).substring(0, 500),
-      reason: String(reason).trim(),
-      description: description ? String(description).trim() : undefined,
-    });
     res.status(201).json({
       success: true,
       data: {
@@ -35,28 +27,25 @@ const createReport = async (req, res) => {
     });
   } catch (error) {
     console.error('createReport error:', error);
-    res.status(500).json({ success: false, message: 'Lỗi khi gửi báo cáo' });
+    const status = error.message && (error.message.includes('Thiếu') || error.message.includes('phải là')) ? 400 : 500;
+    res.status(status).json({ success: false, message: error.message || 'Lỗi khi gửi báo cáo' });
+  }
+};
+
+const getReportById = async (req, res) => {
+  try {
+    const mapped = await reportService.getReportById(req.params.id);
+    if (!mapped) return res.status(404).json({ success: false, message: 'Report không tồn tại' });
+    res.json(mapped);
+  } catch (error) {
+    console.error('getReportById error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết report' });
   }
 };
 
 const getReports = async (req, res) => {
   try {
-    const reports = await Report.find().sort({ createdAt: -1 }).lean();
-    const mapped = reports.map((r) => ({
-      id: r._id.toString(),
-      reporterName: r.reporterName,
-      reporterEmail: r.reporterEmail,
-      reportedEntityType: r.reportedEntityType,
-      reportedEntityId: r.reportedEntityId,
-      reportedEntityTitle: r.reportedEntityTitle,
-      reason: r.reason,
-      description: r.description,
-      status: r.status,
-      priority: r.priority,
-      createdAt: r.createdAt?.toISOString?.() ?? r.createdAt,
-      resolvedAt: r.resolvedAt?.toISOString?.() ?? r.resolvedAt,
-      resolvedBy: r.resolvedBy,
-    }));
+    const mapped = await reportService.getReports();
     res.json(mapped);
   } catch (error) {
     console.error('getReports error:', error);
@@ -66,23 +55,9 @@ const getReports = async (req, res) => {
 
 const resolveReport = async (req, res) => {
   try {
-    const report = await Report.findByIdAndUpdate(
-      req.params.id,
-      { status: 'RESOLVED', resolvedAt: new Date(), resolvedBy: req.user?.username || 'Admin' },
-      { new: true }
-    );
-    if (!report) {
-      return res.status(404).json({ success: false, message: 'Report không tồn tại' });
-    }
-    res.json({
-      success: true,
-      data: {
-        id: report._id.toString(),
-        status: report.status,
-        resolvedAt: report.resolvedAt?.toISOString?.(),
-        resolvedBy: report.resolvedBy,
-      },
-    });
+    const data = await reportService.resolveReport(req.params.id, req.user?.username || 'Admin');
+    if (!data) return res.status(404).json({ success: false, message: 'Report không tồn tại' });
+    res.json({ success: true, data });
   } catch (error) {
     console.error('resolveReport error:', error);
     res.status(500).json({ success: false, message: 'Lỗi khi resolve report' });
@@ -91,27 +66,13 @@ const resolveReport = async (req, res) => {
 
 const dismissReport = async (req, res) => {
   try {
-    const report = await Report.findByIdAndUpdate(
-      req.params.id,
-      { status: 'DISMISSED', resolvedAt: new Date(), resolvedBy: req.user?.username || 'Admin' },
-      { new: true }
-    );
-    if (!report) {
-      return res.status(404).json({ success: false, message: 'Report không tồn tại' });
-    }
-    res.json({
-      success: true,
-      data: {
-        id: report._id.toString(),
-        status: report.status,
-        resolvedAt: report.resolvedAt?.toISOString?.(),
-        resolvedBy: report.resolvedBy,
-      },
-    });
+    const data = await reportService.dismissReport(req.params.id, req.user?.username || 'Admin');
+    if (!data) return res.status(404).json({ success: false, message: 'Report không tồn tại' });
+    res.json({ success: true, data });
   } catch (error) {
     console.error('dismissReport error:', error);
     res.status(500).json({ success: false, message: 'Lỗi khi dismiss report' });
   }
 };
 
-module.exports = { createReport, getReports, resolveReport, dismissReport };
+module.exports = { createReport, getReportById, getReports, resolveReport, dismissReport };

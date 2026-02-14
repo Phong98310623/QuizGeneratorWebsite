@@ -61,6 +61,7 @@ const ProfilePage: React.FC = () => {
 
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [avatarDeleteConfirm, setAvatarDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -193,6 +194,7 @@ const ProfilePage: React.FC = () => {
 
   const handleRemoveAvatar = async () => {
     if (!isAuthenticated) return;
+    setAvatarDeleteConfirm(false);
     setAvatarMessage(null);
     setAvatarSaving(true);
     try {
@@ -341,7 +343,7 @@ const ProfilePage: React.FC = () => {
                           <button
                             type="button"
                             disabled={avatarSaving}
-                            onClick={handleRemoveAvatar}
+                            onClick={() => setAvatarDeleteConfirm(true)}
                             className="ml-2 px-4 py-2 text-slate-600 border border-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50"
                           >
                             Xóa avatar
@@ -677,6 +679,32 @@ const ProfilePage: React.FC = () => {
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
                 {deleteLoading ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {avatarDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => !avatarSaving && setAvatarDeleteConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Xóa ảnh đại diện?</h3>
+            <p className="text-slate-600 text-sm mb-4">Bạn có chắc muốn xóa avatar? Sau khi xóa sẽ hiển thị chữ cái đầu email.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => !avatarSaving && setAvatarDeleteConfirm(false)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                disabled={avatarSaving}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {avatarSaving ? 'Đang xóa...' : 'Xóa'}
               </button>
             </div>
           </div>

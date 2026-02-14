@@ -1,6 +1,8 @@
 import { User } from '../../types';
 
 const API_BASE_URL = process.env.API_BASE_URL || '';
+/** URL cho SSE stream thông báo (admin đang online) */
+export const getNotificationStreamUrl = () => `${API_BASE_URL}/api/notifications/stream`;
 const credentials: RequestCredentials = 'include';
 
 let adminOnUnauthorized: (() => void) | null = null;
@@ -170,6 +172,16 @@ export const adminApi = {
     return Array.isArray(data) ? data : data?.data ?? [];
   },
 
+  getReportById: async (id: string) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/reports/${id}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải chi tiết report');
+    return (data?.data ?? data) as Record<string, any>;
+  },
+
   resolveReport: async (id: string) => {
     const response = await fetchAdminAuth(`${API_BASE_URL}/api/reports/${id}/resolve`, {
       method: 'PATCH',
@@ -310,6 +322,30 @@ export const adminApi = {
     return data?.data ?? data;
   },
 
+  updateSet: async (
+    id: string,
+    payload: {
+      title?: string;
+      description?: string;
+      type?: string;
+      pin?: string | null;
+      verified?: boolean;
+      generatorTopic?: string;
+      generatorCount?: number | null;
+      generatorDifficulty?: string;
+      generatorType?: string;
+    }
+  ) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/sets/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể cập nhật bộ câu hỏi');
+    return data?.data ?? data;
+  },
+
   getQuestionById: async (questionId: string) => {
     const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/questions/${questionId}`, {
       headers: { 'Content-Type': 'application/json' },
@@ -372,6 +408,31 @@ export const adminApi = {
     }
 
     return data?.data ?? data;
+  },
+
+  /** Thông báo: danh sách + lastReadAt (unread = notifications có createdAt > lastReadAt) */
+  getNotifications: async (): Promise<{ notifications: any[]; lastReadAt: string | null }> => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/notifications/me`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông báo');
+    const d = data?.data ?? data;
+    return {
+      notifications: d?.notifications ?? [],
+      lastReadAt: d?.lastReadAt ?? null,
+    };
+  },
+
+  /** Đánh dấu đã đọc tất cả thông báo (lưu lastNotificationReadAt vào user) */
+  markNotificationsRead: async (): Promise<void> => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/notifications/me/read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể cập nhật');
   },
 };
 

@@ -11,6 +11,7 @@ router.get('/questions', protect, requireAdmin, contentController.getQuestions);
 router.get('/questions/:id', protect, requireAdmin, contentController.getQuestionById);
 
 // Admin thao tác trực tiếp trên nội dung
+router.patch('/sets/:id', protect, requireAdmin, contentController.updateSet);
 router.patch(
   '/sets/:id/verify',
   protect,
