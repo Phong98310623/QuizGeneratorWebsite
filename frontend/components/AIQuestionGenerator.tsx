@@ -9,6 +9,8 @@ import { Input } from './quiz/Input';
 import { Select } from './quiz/Select';
 import { QuestionCard } from './quiz/QuestionCard';
 
+type GenerationMode = 'topic' | 'file';
+
 const difficultyToBackend = (d: Difficulty) => {
   if (d === Difficulty.EASY) return 'easy';
   if (d === Difficulty.HARD) return 'hard';
@@ -18,11 +20,23 @@ const difficultyToBackend = (d: Difficulty) => {
 const AIQuestionGenerator: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const [mode, setMode] = useState<GenerationMode>('topic');
+
+  // Topic mode state
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [type, setType] = useState<QuestionType>(QuestionType.MULTIPLE_CHOICE);
   const [count, setCount] = useState<number>(5);
 
+  // File mode state
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string>('');
+  const [fileDifficulty, setFileDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
+  const [fileType, setFileType] = useState<QuestionType>(QuestionType.MULTIPLE_CHOICE);
+  const [fileCount, setFileCount] = useState<number>(5);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Common state
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,10 +49,52 @@ const AIQuestionGenerator: React.FC = () => {
   const topicInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setSaveTitle((prev) => (prev === '' || prev === topic ? topic : prev));
-  }, [topic]);
+    if (mode === 'topic') {
+      setSaveTitle((prev) => (prev === '' || prev === topic ? topic : prev));
+    }
+  }, [topic, mode]);
 
-  const handleGenerate = async () => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    // Validate file type
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+    const validExt = ['txt', 'md', 'pdf'];
+    
+    if (!validExt.includes(ext || '')) {
+      setError('Chỉ hỗ trợ file text (.txt, .md) và PDF (.pdf). Vui lòng chọn file đúng định dạng.');
+      return;
+    }
+
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      setError('File quá lớn (tối đa 50MB).');
+      return;
+    }
+
+    // Warn about PDF if user selects PDF
+    if (ext === 'pdf') {
+      setError('⚠️ PDF chưa được hỗ trợ đầy đủ. Vui lòng sử dụng file .txt hoặc .md để trích xuất nội dung một cách chính xác. Bạn có thể chuyển đổi PDF thành text bằng các công cụ trực tuyến miễn phí.');
+      setFile(null);
+      setFilePreview('');
+      return;
+    }
+
+    setFile(selectedFile);
+    setError(null);
+
+    // Read file preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const preview = content.length > 500 ? content.substring(0, 500) + '...' : content;
+      setFilePreview(preview);
+    };
+    
+    reader.readAsText(selectedFile);
+  };
+
+  const handleGenerateFromTopic = async () => {
     if (!topic.trim()) {
       setError("Vui lòng nhập chủ đề bạn muốn tạo câu hỏi.");
       return;
@@ -55,7 +111,6 @@ const AIQuestionGenerator: React.FC = () => {
     setQuestions([]);
     setSavedPin(null);
 
-    let list: GeneratedQuestion[] = [];
     try {
       const result = await aiApi.generate(null as any, {
         topic: topic.trim(),
@@ -63,7 +118,7 @@ const AIQuestionGenerator: React.FC = () => {
         difficulty,
         type,
       });
-      list = result.data as GeneratedQuestion[];
+      const list = result.data as GeneratedQuestion[];
       setQuestions(list);
 
       if (result.fromCache && result.existingPin) {
@@ -91,12 +146,60 @@ const AIQuestionGenerator: React.FC = () => {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
-      if (list.length > 0) {
-        setQuestions(list);
-        setSaveError(msg);
-      } else {
-        setError(msg);
-      }
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateFromFile = async () => {
+    if (!file) {
+      setError("Vui lòng chọn một file.");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setError('Bạn cần đăng nhập để tạo câu hỏi bằng AI.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSaveError(null);
+    setQuestions([]);
+    setSavedPin(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('count', String(fileCount));
+      formData.append('difficulty', fileDifficulty);
+      formData.append('type', fileType);
+      formData.append('title', file.name.replace(/\.[^/.]+$/, "")); // Remove extension
+
+      const result = await aiApi.generateFromFile(null as any, formData);
+      const list = result.data as GeneratedQuestion[];
+      setQuestions(list);
+
+      // Auto save
+      const fileName = file.name.replace(/\.[^/.]+$/, "");
+      const payload = {
+        title: fileName,
+        description: `Tạo từ file: ${file.name}`,
+        type: fileType || undefined,
+        questions: list.map((q) => ({
+          content: q.question,
+          options: q.options && q.options.length > 0 ? q.options : [q.correctAnswer],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || undefined,
+          difficulty: difficultyToBackend(fileDifficulty),
+        })),
+      };
+      const saveResult = await setsApi.create(null as any, payload);
+      setSavedPin(saveResult.pin || null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -121,7 +224,12 @@ const AIQuestionGenerator: React.FC = () => {
     setSavedPin(null);
     setError(null);
     setSaveError(null);
-    setTimeout(() => topicInputRef.current?.focus(), 0);
+    if (mode === 'topic') {
+      setTimeout(() => topicInputRef.current?.focus(), 0);
+    } else {
+      setFile(null);
+      setFilePreview('');
+    }
   };
 
   const handleSaveSet = async () => {
@@ -137,21 +245,18 @@ const AIQuestionGenerator: React.FC = () => {
     setSaveError(null);
     setSaving(true);
     try {
+      const difficulty = mode === 'topic' ? difficultyToBackend(fileDifficulty) : difficultyToBackend(fileDifficulty);
       const payload = {
         title: saveTitle.trim(),
         description: saveDescription.trim() || undefined,
-        type: type || undefined,
+        type: (mode === 'topic' ? type : fileType) || undefined,
         questions: questions.map((q) => ({
           content: q.question,
           options: q.options && q.options.length > 0 ? q.options : [q.correctAnswer],
           correctAnswer: q.correctAnswer,
           explanation: q.explanation || undefined,
-          difficulty: difficultyToBackend(difficulty),
+          difficulty,
         })),
-        generatorTopic: topic.trim() || undefined,
-        generatorCount: count,
-        generatorDifficulty: difficulty,
-        generatorType: type,
       };
       const result = await setsApi.create(null as any, payload);
       setSavedPin(result.pin || null);
@@ -168,85 +273,201 @@ const AIQuestionGenerator: React.FC = () => {
         <div className="mb-8 text-center sm:text-left">
           <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Tạo câu hỏi trong tích tắc</h2>
           <p className="text-slate-500 text-lg">
-            Nhập chủ đề, chọn cấu hình và để AI giúp bạn soạn thảo bộ câu hỏi chất lượng cao.
+            Nhập chủ đề hoặc tải lên file, để AI giúp bạn soạn thảo bộ câu hỏi chất lượng cao.
           </p>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-slate-200">
+          <button
+            onClick={() => setMode('topic')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              mode === 'topic'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Từ chủ đề
+          </button>
+          <button
+            onClick={() => setMode('file')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              mode === 'file'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Từ file
+          </button>
+        </div>
+
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="sm:col-span-2">
-              <Input
-                ref={topicInputRef}
-                label="Chủ đề câu hỏi"
-                placeholder="Ví dụ: Lịch sử Việt Nam thế kỷ 19, Javascript căn bản..."
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <Select
-              label="Độ khó"
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              options={[
-                { label: 'Dễ (Easy)', value: Difficulty.EASY },
-                { label: 'Trung bình (Medium)', value: Difficulty.MEDIUM },
-                { label: 'Khó (Hard)', value: Difficulty.HARD },
-              ]}
-            />
-
-            <Select
-              label="Loại câu hỏi"
-              value={type}
-              onChange={(e) => setType(e.target.value as QuestionType)}
-              options={[
-                { label: 'Trắc nghiệm (MCQ)', value: QuestionType.MULTIPLE_CHOICE },
-                { label: 'Đúng / Sai', value: QuestionType.TRUE_FALSE },
-                { label: 'Tự luận ngắn', value: QuestionType.SHORT_ANSWER },
-              ]}
-            />
-
-            <div className="sm:col-span-2">
-              <div className="flex flex-col gap-1.5 w-full">
-                <label className="text-sm font-medium text-slate-700">Số lượng câu ({count})</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={count}
-                  onChange={(e) => setCount(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+          {mode === 'topic' ? (
+            // Topic mode
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="sm:col-span-2">
+                <Input
+                  ref={topicInputRef}
+                  label="Chủ đề câu hỏi"
+                  placeholder="Ví dụ: Lịch sử Việt Nam thế kỷ 19, Javascript căn bản..."
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  autoFocus
                 />
-                <div className="flex justify-between text-xs text-slate-400">
-                  <span>1</span>
-                  <span>10</span>
+              </div>
+
+              <Select
+                label="Độ khó"
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+                options={[
+                  { label: 'Dễ (Easy)', value: Difficulty.EASY },
+                  { label: 'Trung bình (Medium)', value: Difficulty.MEDIUM },
+                  { label: 'Khó (Hard)', value: Difficulty.HARD },
+                ]}
+              />
+
+              <Select
+                label="Loại câu hỏi"
+                value={type}
+                onChange={(e) => setType(e.target.value as QuestionType)}
+                options={[
+                  { label: 'Trắc nghiệm (MCQ)', value: QuestionType.MULTIPLE_CHOICE },
+                  { label: 'Đúng / Sai', value: QuestionType.TRUE_FALSE },
+                  { label: 'Tự luận ngắn', value: QuestionType.SHORT_ANSWER },
+                ]}
+              />
+
+              <div className="sm:col-span-2">
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-sm font-medium text-slate-700">Số lượng câu ({count})</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={count}
+                    onChange={(e) => setCount(parseInt(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  />
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>1</span>
+                    <span>10</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <Input
+                  label="Tên bộ câu hỏi (tùy chọn, mặc định = chủ đề)"
+                  placeholder="Để trống sẽ dùng chủ đề làm tên"
+                  value={saveTitle}
+                  onChange={(e) => setSaveTitle(e.target.value)}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <input
+                  type="text"
+                  value={saveDescription}
+                  onChange={(e) => setSaveDescription(e.target.value)}
+                  placeholder="Mô tả (tùy chọn)"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                />
+                <p className="text-xs text-slate-400 mt-1">Nếu điền tên và mô tả trước, bộ câu hỏi sẽ được lưu với thông tin này.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  Tải lên file (.txt, .md hoặc .pdf)
+                </label>
+                <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-slate-400 transition-colors cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <svg className="mx-auto h-12 w-12 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-slate-700 font-medium">
+                    Kéo thả hoặc nhấp để chọn file
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Tối đa 50MB, hỗ trợ .txt, .md, .pdf
+                  </p>
+                </div>
+
+                {file && (
+                  <div className="mt-4 p-4 bg-slate-50 rounded-lg">
+                    <p className="text-sm font-medium text-slate-700 mb-2">
+                      📄 {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                    </p>
+                    {filePreview && (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-slate-600 hover:text-slate-900 mb-2">
+                          {file.name.endsWith('.pdf') ? 'Thông tin file' : 'Xem trước nội dung'}
+                        </summary>
+                        <pre className="bg-white p-2 rounded border border-slate-200 overflow-auto max-h-40 text-slate-700 whitespace-pre-wrap break-words text-xs">
+                          {filePreview}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Select
+                label="Độ khó"
+                value={fileDifficulty}
+                onChange={(e) => setFileDifficulty(e.target.value as Difficulty)}
+                options={[
+                  { label: 'Dễ (Easy)', value: Difficulty.EASY },
+                  { label: 'Trung bình (Medium)', value: Difficulty.MEDIUM },
+                  { label: 'Khó (Hard)', value: Difficulty.HARD },
+                ]}
+              />
+
+              <Select
+                label="Loại câu hỏi"
+                value={fileType}
+                onChange={(e) => setFileType(e.target.value as QuestionType)}
+                options={[
+                  { label: 'Trắc nghiệm (MCQ)', value: QuestionType.MULTIPLE_CHOICE },
+                  { label: 'Đúng / Sai', value: QuestionType.TRUE_FALSE },
+                  { label: 'Tự luận ngắn', value: QuestionType.SHORT_ANSWER },
+                ]}
+              />
+
+              <div>
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-sm font-medium text-slate-700">Số lượng câu ({fileCount})</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={fileCount}
+                    onChange={(e) => setFileCount(parseInt(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  />
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>1</span>
+                    <span>10</span>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div className="sm:col-span-2">
-              <Input
-                label="Tên bộ câu hỏi (tùy chọn, mặc định = chủ đề)"
-                placeholder="Để trống sẽ dùng chủ đề làm tên"
-                value={saveTitle}
-                onChange={(e) => setSaveTitle(e.target.value)}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <input
-                type="text"
-                value={saveDescription}
-                onChange={(e) => setSaveDescription(e.target.value)}
-                placeholder="Mô tả (tùy chọn)"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              />
-              <p className="text-xs text-slate-400 mt-1">Nếu điền tên và mô tả trước, bộ câu hỏi sẽ được lưu với thông tin này.</p>
-            </div>
-          </div>
+          )}
 
           <div className="mt-8 flex justify-end">
-            <Button onClick={handleGenerate} isLoading={loading} className="w-full sm:w-auto">
+            <Button 
+              onClick={mode === 'topic' ? handleGenerateFromTopic : handleGenerateFromFile} 
+              isLoading={loading} 
+              className="w-full sm:w-auto"
+            >
               Tạo câu hỏi (tự động lưu)
               <svg className="ml-2 -mr-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -298,22 +519,41 @@ const AIQuestionGenerator: React.FC = () => {
                       includeMargin={false}
                     />
                   </div>
-                  <div className="flex flex-wrap gap-3 justify-center">
-                    <button
-                      type="button"
-                      onClick={handleCopyPlayLink}
-                      className="px-4 py-2 border border-green-600 text-green-700 rounded-lg hover:bg-green-100"
-                    >
-                      Sao chép link chơi
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/play/${encodeURIComponent(savedPin)}`)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                      Vào làm ngay
-                    </button>
+                  <div className="text-center flex-1">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-green-600 mb-1">Mã PIN</p>
+                        <code className="block text-lg font-mono font-bold text-slate-800 bg-white px-3 py-2 rounded border border-green-200">
+                          {savedPin}
+                        </code>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-600 mb-1">Link</p>
+                        <button
+                          onClick={handleCopyPlayLink}
+                          className="w-full px-3 py-2 rounded border border-green-600 text-green-700 hover:bg-green-100 text-xs font-medium transition-colors"
+                        >
+                          Sao chép link
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                </div>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <button
+                    type="button"
+                    onClick={handleCopyPlayLink}
+                    className="px-4 py-2 border border-green-600 text-green-700 rounded-lg hover:bg-green-100"
+                  >
+                    Sao chép link chơi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/play/${encodeURIComponent(savedPin)}`)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    Vào làm ngay
+                  </button>
                 </div>
               </div>
             ) : (
@@ -362,7 +602,11 @@ const AIQuestionGenerator: React.FC = () => {
               </svg>
             </div>
             <h3 className="text-slate-900 font-medium text-lg mb-1">Chưa có câu hỏi nào</h3>
-            <p className="text-slate-500 max-w-sm mx-auto">Nhập chủ đề và nhấn "Tạo câu hỏi" để bắt đầu.</p>
+            <p className="text-slate-500 max-w-sm mx-auto">
+              {mode === 'topic' 
+                ? 'Nhập chủ đề và nhấn "Tạo câu hỏi" để bắt đầu.'
+                : 'Chọn file và nhấn "Tạo câu hỏi" để bắt đầu.'}
+            </p>
           </div>
         )}
       </main>
