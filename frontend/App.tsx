@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import ExplorePage from './pages/ExplorePage';
+import ExploreSetsPage from './pages/ExploreSetsPage';
 import CreatePage from './pages/CreatePage';
 import ProfilePage from './pages/ProfilePage';
 import PlayPage from './pages/PlayPage';
@@ -53,6 +54,7 @@ const AppRoutes: React.FC = () => {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="explore" element={<ExplorePage />} />
+        <Route path="explore-sets" element={<ExploreSetsPage />} />
         <Route path="create" element={<CreatePage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="customize-question" element={<CustomizeQuestion />} />
