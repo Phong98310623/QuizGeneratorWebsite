@@ -35,6 +35,7 @@ const registerUser = async (userData) => {
         email: user.email,
         role: user.role,
         status: user.status,
+        avatar: user.avatar || null,
         token: generateToken(user.id)
     };
 };
@@ -62,6 +63,7 @@ const loginUser = async (loginData) => {
         email: user.email,
         role: user.role,
         status: user.status,
+        avatar: user.avatar || null,
         token: generateToken(user.id)
     };
 };
@@ -74,6 +76,15 @@ const updateProfile = async (userId, data) => {
     if (data.username != null && String(data.username).trim()) {
         user.username = String(data.username).trim();
     }
+    if (data.avatar !== undefined) {
+        if (data.avatar === null || data.avatar === '') {
+            user.avatar = null;
+        } else {
+            const str = String(data.avatar);
+            if (str.length > 500000) throw new Error('Ảnh avatar quá lớn (tối đa ~500KB)');
+            user.avatar = str;
+        }
+    }
     await user.save();
     return {
         _id: user.id,
@@ -81,11 +92,30 @@ const updateProfile = async (userId, data) => {
         email: user.email,
         role: user.role,
         status: user.status,
+        avatar: user.avatar || null,
     };
+};
+
+const changePassword = async (userId, currentPassword, newPassword) => {
+    const user = await User.findById(userId);
+    if (!user) {
+        throw new Error('User not found');
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+        throw new Error('Mật khẩu hiện tại không đúng');
+    }
+    if (!newPassword || String(newPassword).length < 6) {
+        throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự');
+    }
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
 };
 
 module.exports = {
     registerUser,
     loginUser,
-    updateProfile
+    updateProfile,
+    changePassword
 };

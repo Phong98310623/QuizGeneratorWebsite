@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { stringToSafeColor } from '../utils/avatar';
 
 const UserLayout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -46,11 +47,20 @@ const UserLayout: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              to="/profile"
-              className="text-sm text-slate-500 hidden sm:inline truncate max-w-[120px] hover:text-indigo-600 hover:underline"
-            >
-              {user.email}
+            <Link to="/profile" className="flex items-center gap-2">
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-200" />
+              ) : (
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white"
+                  style={{ backgroundColor: stringToSafeColor(user.email) }}
+                >
+                  {(user.fullName || user.email).charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-sm text-slate-500 hidden sm:inline truncate max-w-[200px] hover:text-indigo-600 hover:underline">
+                {user.fullName || user.email}
+              </span>
             </Link>
             <button
               onClick={handleLogout}

@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['ACTIVE', 'INACTIVE', 'BANNED'],
         default: 'ACTIVE'
+    },
+    avatar: {
+        type: String,
+        default: null
     }
 }, { timestamps: true });
 

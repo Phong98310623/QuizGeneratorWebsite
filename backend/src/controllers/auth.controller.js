@@ -63,9 +63,34 @@ const updateMe = async (req, res) => {
     }
 };
 
+// @desc    Đổi mật khẩu. Route bảo vệ. Body: currentPassword, newPassword
+// @route   PATCH /api/auth/me/password
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cần nhập mật khẩu hiện tại và mật khẩu mới'
+            });
+        }
+        await authService.changePassword(req.user.id, currentPassword, newPassword);
+        res.status(200).json({
+            success: true,
+            message: 'Đã đổi mật khẩu thành công'
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     register,
     login,
     getMe,
-    updateMe
+    updateMe,
+    changePassword
 };

@@ -7,6 +7,7 @@ const mapBackendUser = (data: Record<string, unknown>): User => ({
   id: String(data.id ?? data._id ?? ''),
   email: String(data.email ?? ''),
   fullName: String(data.username ?? data.email ?? ''),
+  avatar: data.avatar != null ? String(data.avatar) : undefined,
   role: data.role ? String(data.role) : undefined,
   status: data.status ? String(data.status) : undefined,
   createdAt: data.createdAt ? String(data.createdAt) : new Date().toISOString(),
@@ -105,7 +106,7 @@ export const authService = {
     // JWT không cần gọi API logout - token sẽ hết hạn
   },
 
-  updateProfile: async (token: string, data: { username?: string }): Promise<ApiResponse<User>> => {
+  updateProfile: async (token: string, data: { username?: string; avatar?: string | null }): Promise<ApiResponse<User>> => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         method: 'PATCH',
@@ -121,6 +122,32 @@ export const authService = {
       }
       const raw = (result as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
       return { success: true, data: mapBackendUser(raw ?? {}) };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể kết nối đến server',
+      };
+    }
+  },
+
+  changePassword: async (
+    token: string,
+    data: { currentPassword: string; newPassword: string }
+  ): Promise<ApiResponse<null>> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      const result = await parseResponse(response);
+      if (!response.ok) {
+        return { success: false, error: parseError(result) };
+      }
+      return { success: true, data: null };
     } catch (err) {
       return {
         success: false,
