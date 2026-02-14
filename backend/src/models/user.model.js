@@ -30,7 +30,16 @@ const userSchema = new mongoose.Schema({
     avatar: {
         type: String,
         default: null
-    }
+    },
+    favorites: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Question'
+    }],
+    savedCollections: [{
+        nameid: { type: String, required: true },
+        name: { type: String, required: true },
+        questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }]
+    }]
 }, { timestamps: true });
 
 // Database = MONGO_DB_NAME (.env.local), collection = MONGO_USER_COLLECTION (cả đăng nhập + danh sách user)

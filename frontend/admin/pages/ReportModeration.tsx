@@ -534,7 +534,7 @@ const ReportModeration: React.FC = () => {
                 src={`${window.location.origin}${window.location.pathname}#/admin/preview/${iframeEntity.type}/${encodeURIComponent(iframeEntity.id)}`}
                 title="Entity preview"
                 className="w-full h-full border-0 rounded-b-2xl"
-                sandbox="allow-same-origin allow-scripts"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox"
               />
             </div>
           </div>

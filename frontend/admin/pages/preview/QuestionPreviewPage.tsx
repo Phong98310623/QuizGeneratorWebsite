@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -18,6 +19,12 @@ import {
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { adminApi } from '../../services/adminApi';
 
+interface UsedByAttempt {
+  answer: string;
+  attemptedAt: string | null;
+  isCorrect: boolean;
+}
+
 interface UsedByUser {
   id: string;
   email: string;
@@ -25,6 +32,7 @@ interface UsedByUser {
   totalAttempts: number;
   correctAttempts: number;
   ratio: string;
+  attempts?: UsedByAttempt[];
 }
 
 interface Creator {
@@ -142,6 +150,9 @@ const QuestionPreviewPage: React.FC = () => {
   const [editCorrectAnswer, setEditCorrectAnswer] = useState('');
   const [editDifficulty, setEditDifficulty] = useState('');
   const [editExplanation, setEditExplanation] = useState('');
+  const [popoverUserId, setPopoverUserId] = useState<string | null>(null);
+  const [triggerRect, setTriggerRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const popoverUser = (data?.usedByUsers ?? []).find((u) => u.id === popoverUserId);
 
   const fetchData = useCallback(async () => {
     if (!token || !id) return;
@@ -286,6 +297,31 @@ const QuestionPreviewPage: React.FC = () => {
 
   const usedByUsers = data.usedByUsers || [];
   const formatDate = (d?: string) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
+
+  // Tổng tỉ lệ đúng từ tất cả user (cho footer)
+  const totalStats = usedByUsers.reduce(
+    (acc, u) => ({
+      correct: acc.correct + (u.correctAttempts ?? 0),
+      total: acc.total + (u.totalAttempts ?? 0),
+    }),
+    { correct: 0, total: 0 }
+  );
+  const totalCorrectRate =
+    totalStats.total > 0 ? Math.round((totalStats.correct / totalStats.total) * 100) : null;
+
+  // Đề xuất độ khó theo % đúng (chỉ đề xuất, không tự sửa)
+  const getSuggestedDifficultyByRate = (rate: number | null): 'easy' | 'medium' | 'hard' | null => {
+    if (rate === null) return null;
+    if (rate >= 70) return 'easy';
+    if (rate >= 40) return 'medium';
+    return 'hard';
+  };
+  const suggestedDifficulty = getSuggestedDifficultyByRate(totalCorrectRate);
+  const currentDifficulty = (data.difficulty ?? (editDifficulty || 'medium')).toLowerCase();
+  const shouldSuggestChange =
+    suggestedDifficulty != null &&
+    currentDifficulty !== suggestedDifficulty &&
+    ['easy', 'medium', 'hard'].includes(currentDifficulty);
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
@@ -565,17 +601,30 @@ const QuestionPreviewPage: React.FC = () => {
                       <td className="px-4 py-2 font-medium text-slate-900">{u.fullName}</td>
                       <td className="px-4 py-2 text-slate-600">{u.email}</td>
                       <td className="px-4 py-2 text-center">
-                        <span
-                          className={`font-medium ${
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const el = e.currentTarget as HTMLElement;
+                            const rect = el.getBoundingClientRect();
+                            if (popoverUserId === u.id) {
+                              setPopoverUserId(null);
+                              setTriggerRect(null);
+                            } else {
+                              setTriggerRect({ top: rect.top, left: rect.left, width: rect.width });
+                              setPopoverUserId(u.id);
+                            }
+                          }}
+                          className={`font-medium underline decoration-dotted cursor-pointer hover:opacity-80 ${
                             u.totalAttempts > 0 && u.correctAttempts === u.totalAttempts
                               ? 'text-emerald-600'
                               : u.correctAttempts > 0
                                 ? 'text-amber-600'
                                 : 'text-slate-500'
                           }`}
+                          title="Xem danh sách đáp án đã chọn"
                         >
                           {u.ratio}
-                        </span>
+                        </button>
                       </td>
                       <td className="px-4 py-2 text-center">
                         <a
@@ -590,9 +639,108 @@ const QuestionPreviewPage: React.FC = () => {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                  <tr>
+                    <td colSpan={4} className="px-4 py-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                        <span className="font-medium text-slate-700">
+                          Tổng tỉ lệ đúng:{' '}
+                          {totalCorrectRate != null ? (
+                            <span
+                              className={
+                                totalCorrectRate >= 70
+                                  ? 'text-emerald-600'
+                                  : totalCorrectRate >= 40
+                                    ? 'text-amber-600'
+                                    : 'text-rose-600'
+                              }
+                            >
+                              {totalCorrectRate}%
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                          {totalStats.total > 0 && (
+                            <span className="text-slate-500 font-normal ml-1">
+                              ({totalStats.correct}/{totalStats.total} lần)
+                            </span>
+                          )}
+                        </span>
+                        {shouldSuggestChange && suggestedDifficulty && (
+                          <span className="text-amber-700 text-xs sm:text-sm bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                            Đề xuất độ khó: <strong>{suggestedDifficulty}</strong> (hiện tại: {currentDifficulty})
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
+        )}
+
+      {typeof document !== 'undefined' &&
+        popoverUserId &&
+        popoverUser &&
+        triggerRect &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[100]"
+              aria-hidden
+              onClick={() => {
+                setPopoverUserId(null);
+                setTriggerRect(null);
+              }}
+            />
+            <div
+              className="fixed z-[110] min-w-[240px] max-w-[360px] bg-white border border-slate-200 rounded-xl shadow-lg py-2 max-h-[280px] overflow-y-auto"
+              style={{
+                bottom: window.innerHeight - triggerRect.top + 8,
+                left: triggerRect.left + triggerRect.width / 2,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <p className="px-3 py-1.5 text-xs font-semibold text-slate-500 border-b border-slate-100 sticky top-0 bg-white">
+                Đáp án đã chọn{popoverUser.attempts?.length ? ` (${popoverUser.attempts.length} lần)` : ''}
+              </p>
+              {(popoverUser.attempts?.length ?? 0) > 0 ? (
+                <ul className="px-2 py-1">
+                  {popoverUser.attempts!.map((a, i) => (
+                    <li
+                      key={i}
+                      className="px-2 py-2 rounded-lg border-b border-slate-50 last:border-0 text-left"
+                    >
+                      <span
+                        className={`text-sm ${a.isCorrect ? 'text-emerald-700' : 'text-rose-700'}`}
+                      >
+                        {a.answer || '—'}
+                      </span>
+                      <span className="ml-2 text-xs text-slate-500">
+                        {a.attemptedAt
+                          ? new Date(a.attemptedAt).toLocaleString('vi-VN', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '—'}
+                      </span>
+                      <span
+                        className={`block mt-0.5 text-xs font-medium ${a.isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}
+                      >
+                        {a.isCorrect ? 'Đúng' : 'Sai'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-3 py-3 text-sm text-slate-500">Không có dữ liệu từng lần làm.</p>
+              )}
+            </div>
+          </>,
+          document.body
         )}
       </div>
     </div>

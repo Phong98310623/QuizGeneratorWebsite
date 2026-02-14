@@ -177,16 +177,33 @@ const getQuestionById = async (req, res) => {
     const userStats = {};
     for (const e of usedByEntries) {
       if (!userStats[e.userId]) {
-        userStats[e.userId] = { total: 0, correct: 0, user: usersMap[e.userId] || { id: e.userId, email: '—', fullName: '—' } };
+        userStats[e.userId] = {
+          total: 0,
+          correct: 0,
+          user: usersMap[e.userId] || { id: e.userId, email: '—', fullName: '—' },
+          attempts: [],
+        };
       }
       userStats[e.userId].total += 1;
       if (e.isCorrect) userStats[e.userId].correct += 1;
+      let attemptedAtStr = null;
+      if (e.attemptedAt) {
+        if (typeof e.attemptedAt.toISOString === 'function') attemptedAtStr = e.attemptedAt.toISOString();
+        else if (e.attemptedAt.$date) attemptedAtStr = typeof e.attemptedAt.$date === 'string' ? e.attemptedAt.$date : (e.attemptedAt.$date?.toISOString?.() ?? null);
+        else if (typeof e.attemptedAt === 'string') attemptedAtStr = e.attemptedAt;
+      }
+      userStats[e.userId].attempts.push({
+        answer: e.answer,
+        attemptedAt: attemptedAtStr,
+        isCorrect: e.isCorrect,
+      });
     }
     const usedByUsers = Object.values(userStats).map((s) => ({
       ...s.user,
       totalAttempts: s.total,
       correctAttempts: s.correct,
       ratio: s.total > 0 ? `${s.correct}/${s.total}` : '0/0',
+      attempts: s.attempts,
     }));
 
     let creator = null;

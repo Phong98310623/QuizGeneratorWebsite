@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Flag, X, Frown } from 'lucide-react';
-import { publicApi, attemptsApi, reportApi, PlayQuestion, QuestionSetMeta } from '../services/api';
+import { QRCodeSVG } from 'qrcode.react';
+import { Flag, X, Frown, Heart, Bookmark, Copy } from 'lucide-react';
+import { publicApi, attemptsApi, reportApi, userFavoritesApi, PlayQuestion, QuestionSetMeta, SavedCollection } from '../services/api';
 
 const CONFETTI_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444'];
 const CONFETTI_COUNT = 60;
@@ -121,8 +122,20 @@ const PlayPage: React.FC = () => {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [reportError, setReportError] = useState('');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [savedCollections, setSavedCollections] = useState<SavedCollection[]>([]);
+  const [showBookmarkModal, setShowBookmarkModal] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [showAddCollectionInput, setShowAddCollectionInput] = useState(false);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [collectionActionLoading, setCollectionActionLoading] = useState<string | null>(null);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [pinCopied, setPinCopied] = useState(false);
 
   const normalizedPin = pin ? decodeURIComponent(pin).trim().toUpperCase() : '';
+  const playLink = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}#/play/${encodeURIComponent(normalizedPin)}`
+    : '';
 
   useEffect(() => {
     if (!normalizedPin) {
@@ -149,7 +162,74 @@ const PlayPage: React.FC = () => {
     })();
   }, [normalizedPin]);
 
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    (async () => {
+      try {
+        const data = await userFavoritesApi.get(token);
+        setFavorites(data.favorites || []);
+        setSavedCollections(data.savedCollections || []);
+      } catch {
+        // User might not have favorites yet
+      }
+    })();
+  }, []);
+
   const current = questions[index];
+  const token = localStorage.getItem('auth_token');
+  const isFavorite = current && token ? favorites.includes(current.id) : false;
+
+  const handleToggleFavorite = async () => {
+    if (!token || !current) return;
+    setFavoritesLoading(true);
+    try {
+      const res = await userFavoritesApi.toggleFavorite(token, current.id);
+      setFavorites(res.favorites);
+    } catch {
+      // ignore
+    } finally {
+      setFavoritesLoading(false);
+    }
+  };
+
+  const handleOpenBookmarkModal = () => {
+    if (!token || !current) return;
+    setShowAddCollectionInput(false);
+    setNewCollectionName('');
+    setShowBookmarkModal(true);
+  };
+
+  const handleAddToCollection = async (nameid: string) => {
+    if (!token || !current) return;
+    setCollectionActionLoading(nameid);
+    try {
+      const updated = await userFavoritesApi.addToCollection(token, nameid, current.id);
+      setSavedCollections((prev) =>
+        prev.map((c) => (c.nameid === nameid ? updated : c))
+      );
+    } catch {
+      // ignore
+    } finally {
+      setCollectionActionLoading(null);
+    }
+  };
+
+  const handleCreateCollection = async () => {
+    if (!token || !newCollectionName.trim()) return;
+    setCollectionActionLoading('create');
+    try {
+      const created = await userFavoritesApi.createCollection(token, newCollectionName.trim());
+      setSavedCollections((prev) => [...prev, created]);
+      setNewCollectionName('');
+      setShowAddCollectionInput(false);
+      await handleAddToCollection(created.nameid);
+    } catch {
+      // ignore
+    } finally {
+      setCollectionActionLoading(null);
+    }
+  };
   const isLast = index >= questions.length - 1;
   const isCorrect = current && selected !== null && (current.options?.find((o) => o.text === selected)?.isCorrect ?? current.correctAnswer === selected);
 
@@ -268,6 +348,44 @@ const PlayPage: React.FC = () => {
     );
   }
 
+  if (!gameStarted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 max-w-sm w-full text-center">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">{meta?.title}</h2>
+          <p className="text-slate-500 text-sm mb-6">{questions.length} câu hỏi</p>
+          <div className="flex justify-center mb-6">
+            <QRCodeSVG value={playLink} size={180} level="M" className="rounded-lg border border-slate-200 p-2 bg-white" />
+          </div>
+          <p className="text-slate-600 text-sm mb-1">Mã PIN</p>
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <p className="text-2xl font-bold font-mono text-indigo-600">{normalizedPin}</p>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(normalizedPin);
+                setPinCopied(true);
+                setTimeout(() => setPinCopied(false), 1500);
+              }}
+              className={`p-2 rounded-lg transition-colors ${pinCopied ? 'text-green-600 bg-green-50' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
+              title="Sao chép mã PIN"
+            >
+              <Copy size={20} />
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mb-6">Quét QR để chia sẻ link làm bài</p>
+          <button
+            type="button"
+            onClick={() => setGameStarted(true)}
+            className="w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700"
+          >
+            Bắt đầu
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const finished = index >= questions.length;
   if (finished) {
     const total = questions.length;
@@ -327,14 +445,41 @@ const PlayPage: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
           <div className="flex items-start justify-between gap-3 mb-6">
             <h2 className="text-lg font-semibold text-slate-800 flex-1">{q.content}</h2>
-            <button
-              type="button"
-              onClick={openReportModal}
-              className="flex-shrink-0 p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-              title="Báo cáo câu hỏi"
-            >
-              <Flag size={18} />
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {token && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleToggleFavorite}
+                    disabled={favoritesLoading}
+                    className={`p-2 rounded-lg transition-colors ${
+                      isFavorite
+                        ? 'text-rose-500 hover:bg-rose-50'
+                        : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'
+                    }`}
+                    title={isFavorite ? 'Bỏ khỏi yêu thích' : 'Thêm vào yêu thích'}
+                  >
+                    <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenBookmarkModal}
+                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    title="Lưu vào bộ sưu tập"
+                  >
+                    <Bookmark size={18} />
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={openReportModal}
+                className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                title="Báo cáo câu hỏi"
+              >
+                <Flag size={18} />
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             {options.map((opt) => {
@@ -460,6 +605,91 @@ const PlayPage: React.FC = () => {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Lưu vào bộ sưu tập */}
+      {showBookmarkModal && token && current && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowBookmarkModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-800">Lưu vào bộ sưu tập</h3>
+              <button
+                type="button"
+                onClick={() => setShowBookmarkModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {savedCollections.map((col) => {
+                const hasQuestion = col.questionIds.includes(current.id);
+                return (
+                  <button
+                    key={col.nameid}
+                    type="button"
+                    disabled={hasQuestion || collectionActionLoading === col.nameid}
+                    onClick={() => handleAddToCollection(col.nameid)}
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                      hasQuestion
+                        ? 'border-green-500 bg-green-50 text-green-700 cursor-default'
+                        : 'border-slate-200 hover:border-indigo-500 hover:bg-indigo-50'
+                    }`}
+                  >
+                    <span className="font-medium">{col.name}</span>
+                    {hasQuestion && <span className="ml-2 text-sm">(đã lưu)</span>}
+                    {collectionActionLoading === col.nameid && <span className="ml-2 text-sm">...</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              {showAddCollectionInput ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Tên bộ sưu tập mới"
+                    value={newCollectionName}
+                    onChange={(e) => setNewCollectionName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateCollection()}
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateCollection}
+                    disabled={!newCollectionName.trim() || collectionActionLoading === 'create'}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+                  >
+                    Tạo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddCollectionInput(false); setNewCollectionName(''); }}
+                    className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAddCollectionInput(true)}
+                  className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors"
+                >
+                  <span className="text-xl leading-none">+</span>
+                  <span className="font-medium">Tạo bộ sưu tập mới</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

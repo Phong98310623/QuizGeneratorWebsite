@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MoreVertical, Shield, ShieldCheck, Ban, CheckCircle, Search, Filter, Loader2, AlertCircle, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Shield, ShieldCheck, Ban, CheckCircle, Search, Filter, Loader2, AlertCircle, X } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { adminApi } from '../services/adminApi';
 import { User } from '../../types';
@@ -14,6 +15,8 @@ const UserManagement: React.FC = () => {
   const [blockReason, setBlockReason] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const { token } = useAdminAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -149,7 +152,17 @@ const UserManagement: React.FC = () => {
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // #region agent log
+                            const pathUsed = `preview/user/${user.id}`;
+                            fetch('http://127.0.0.1:7244/ingest/ce880661-753e-4c17-acfe-180cc31dd4ed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserManagement.tsx:onClick',message:'navigate to preview user',data:{userId:user.id,pathUsed,pathname:location.pathname,hash:typeof window!=='undefined'?window.location.hash:''},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+                            // #endregion
+                            navigate(`/admin/preview/user/${user.id}`);
+                          }}
+                          className="flex items-center gap-3 w-full text-left hover:opacity-90 transition-opacity"
+                        >
                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
                             {user.fullName.charAt(0).toUpperCase()}
                           </div>
@@ -157,7 +170,7 @@ const UserManagement: React.FC = () => {
                             <p className="font-bold text-slate-900">{user.fullName}</p>
                             <p className="text-xs text-slate-500">{user.email}</p>
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -197,23 +210,21 @@ const UserManagement: React.FC = () => {
                         {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleBlockClick(user)}
-                            disabled={isUpdating}
-                            className={`p-2 rounded-lg transition-colors ${
-                              user.status === 'ACTIVE'
-                                ? 'text-rose-600 hover:bg-rose-50'
-                                : 'text-emerald-600 hover:bg-emerald-50'
-                            } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            title={user.status === 'ACTIVE' ? 'Block User' : 'Unblock User'}
-                          >
-                            {user.status === 'ACTIVE' ? <Ban size={18} /> : <CheckCircle size={18} />}
-                          </button>
-                          <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
-                            <MoreVertical size={18} />
-                          </button>
-                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBlockClick(user);
+                          }}
+                          disabled={isUpdating}
+                          className={`p-2 rounded-lg transition-colors ${
+                            user.status === 'ACTIVE'
+                              ? 'text-rose-600 hover:bg-rose-50'
+                              : 'text-emerald-600 hover:bg-emerald-50'
+                          } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={user.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Bỏ khóa'}
+                        >
+                          {user.status === 'ACTIVE' ? <Ban size={18} /> : <CheckCircle size={18} />}
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -225,7 +236,7 @@ const UserManagement: React.FC = () => {
       )}
 
       {showBlockModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-slate-900">Block User</h3>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserX, ShieldAlert, RotateCcw, Search, Loader2, AlertCircle } from 'lucide-react';
+import { UserX, ShieldAlert, RotateCcw, Search, Loader2, AlertCircle, X } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { adminApi } from '../services/adminApi';
 import { User } from '../../types';
@@ -10,6 +10,7 @@ const Blacklist: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [iframeUserId, setIframeUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBlacklistedUsers = async () => {
@@ -159,7 +160,11 @@ const Blacklist: React.FC = () => {
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIframeUserId(user.id)}
+                        className="flex items-center gap-3 w-full text-left hover:opacity-90 transition-opacity"
+                      >
                         <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
                           {user.fullName.charAt(0).toUpperCase()}
                         </div>
@@ -171,7 +176,7 @@ const Blacklist: React.FC = () => {
                             {user.email}
                           </p>
                         </div>
-                      </div>
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600">
                       {user.createdAt
@@ -185,7 +190,10 @@ const Blacklist: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => restoreAccess(user.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          restoreAccess(user.id);
+                        }}
                         className="flex items-center gap-2 ml-auto text-indigo-600 hover:text-indigo-800 font-semibold text-xs"
                       >
                         <RotateCcw size={14} />
@@ -197,6 +205,31 @@ const Blacklist: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal iframe chi tiết user */}
+      {iframeUserId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900">Chi tiết user</h3>
+              <button
+                onClick={() => setIframeUserId(null)}
+                className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <iframe
+                src={`${window.location.origin}${window.location.pathname}#/admin/preview/user/${encodeURIComponent(iframeUserId)}`}
+                title="Chi tiết user"
+                className="w-full h-full border-0 rounded-b-2xl"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

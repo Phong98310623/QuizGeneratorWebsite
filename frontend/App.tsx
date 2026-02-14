@@ -9,6 +9,8 @@ import ExplorePage from './pages/ExplorePage';
 import CreatePage from './pages/CreatePage';
 import ProfilePage from './pages/ProfilePage';
 import PlayPage from './pages/PlayPage';
+import CustomizeQuestion from './pages/CustomizeQuestion';
+import CreateSetFromCollection from './pages/CreateSetFromCollection';
 import UserLayout from './components/UserLayout';
 import { AdminAuthProvider } from './admin/context/AdminAuthContext';
 import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
@@ -53,6 +55,8 @@ const AppRoutes: React.FC = () => {
         <Route path="explore" element={<ExplorePage />} />
         <Route path="create" element={<CreatePage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="customize-question" element={<CustomizeQuestion />} />
+        <Route path="create-set-from-collection" element={<CreateSetFromCollection />} />
       </Route>
       <Route path="/play/:pin" element={<ProtectedRoute><PlayPage /></ProtectedRoute>} />
       {/* Admin routes */}

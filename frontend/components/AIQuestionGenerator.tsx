@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Difficulty, GeneratedQuestion, QuestionType } from '../types/quiz';
 import { aiApi, setsApi } from '../services/api';
@@ -165,11 +165,6 @@ const AIQuestionGenerator: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20">
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
-        <nav className="text-sm text-slate-500 mb-6">
-          <Link to="/dashboard" className="hover:text-indigo-600">Trang chủ</Link>
-          <span className="mx-2">/</span>
-          <span className="text-slate-700">Tạo câu hỏi</span>
-        </nav>
         <div className="mb-8 text-center sm:text-left">
           <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Tạo câu hỏi trong tích tắc</h2>
           <p className="text-slate-500 text-lg">

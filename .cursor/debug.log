@@ -1,0 +1,2 @@
+{"location":"UserManagement.tsx:onClick","message":"navigate to preview user","data":{"userId":"698c4045dbb68225abb7b8b0","pathUsed":"preview/user/698c4045dbb68225abb7b8b0","pathname":"/admin/users","hash":"#/admin/users"},"timestamp":1771073159371,"hypothesisId":"H1"}
+{"location":"UserManagement.tsx:onClick","message":"navigate to preview user","data":{"userId":"698c4044dbb68225abb7b8ad","pathUsed":"preview/user/698c4044dbb68225abb7b8ad","pathname":"/admin/users","hash":"#/admin/users"},"timestamp":1771073657745,"hypothesisId":"H1"}

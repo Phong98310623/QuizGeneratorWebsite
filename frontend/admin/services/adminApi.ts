@@ -71,6 +71,16 @@ export const adminApi = {
     };
   },
 
+  /** Chi tiết đầy đủ user (cho trang preview admin): username, favorites, savedCollections, avatar, ... */
+  getFullUser: async (id: string, token: string): Promise<Record<string, any>> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin user');
+    return (data?.data ?? data) as Record<string, any>;
+  },
+
   getAllUsers: async (token: string): Promise<User[]> => {
     const response = await fetch(`${API_BASE_URL}/api/users`, {
       method: 'GET',

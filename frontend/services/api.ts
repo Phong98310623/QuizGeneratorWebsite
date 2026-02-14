@@ -337,6 +337,111 @@ export const reportApi = {
   },
 };
 
+export interface SavedCollection {
+  nameid: string;
+  name: string;
+  questionIds: string[];
+}
+
+export interface FavoritesAndCollectionsData {
+  favorites: string[];
+  savedCollections: SavedCollection[];
+}
+
+export interface SavedQuestionDetail {
+  id: string;
+  content: string;
+  options?: { text: string; isCorrect?: boolean }[];
+  correctAnswer?: string;
+  explanation?: string;
+  difficulty?: string;
+}
+
+export interface SavedCollectionWithQuestions extends SavedCollection {
+  questions: SavedQuestionDetail[];
+}
+
+export interface FavoritesAndCollectionsWithDetails extends FavoritesAndCollectionsData {
+  favoriteQuestions: SavedQuestionDetail[];
+  savedCollectionsWithQuestions: SavedCollectionWithQuestions[];
+}
+
+export const userFavoritesApi = {
+  get: async (token: string): Promise<FavoritesAndCollectionsData> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/favorites`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tải dữ liệu');
+    return (data as { success: boolean; data: FavoritesAndCollectionsData }).data;
+  },
+
+  getWithDetails: async (token: string): Promise<FavoritesAndCollectionsWithDetails> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/favorites?details=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tải dữ liệu');
+    return (data as { success: boolean; data: FavoritesAndCollectionsWithDetails }).data;
+  },
+
+  toggleFavorite: async (token: string, questionId: string): Promise<{ favorites: string[]; added: boolean }> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/favorites/toggle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ questionId }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi cập nhật');
+    return (data as { success: boolean; data: { favorites: string[]; added: boolean } }).data;
+  },
+
+  createCollection: async (token: string, name: string): Promise<SavedCollection> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/saved-collections`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tạo bộ sưu tập');
+    return (data as { success: boolean; data: SavedCollection }).data;
+  },
+
+  addToCollection: async (token: string, nameid: string, questionId: string): Promise<SavedCollection> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/saved-collections/${encodeURIComponent(nameid)}/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ questionId }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi thêm câu hỏi');
+    return (data as { success: boolean; data: SavedCollection }).data;
+  },
+
+  removeFromCollection: async (token: string, nameid: string, questionId: string): Promise<SavedCollection> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/saved-collections/${encodeURIComponent(nameid)}/remove`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ questionId }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi xóa câu hỏi');
+    return (data as { success: boolean; data: SavedCollection }).data;
+  },
+};
+
 export const setsApi = {
   create: async (token: string, payload: CreateSetPayload) => {
     const response = await fetch(`${API_BASE_URL}/api/sets`, {
