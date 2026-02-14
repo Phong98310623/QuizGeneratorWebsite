@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { publicApi, PlayQuestion, QuestionSetMeta } from '../services/api';
+import { publicApi, attemptsApi, PlayQuestion, QuestionSetMeta } from '../services/api';
 
 const PlayPage: React.FC = () => {
   const { pin } = useParams<{ pin: string }>();
@@ -13,6 +13,8 @@ const PlayPage: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const hasSavedToServer = useRef(false);
 
   const normalizedPin = pin ? decodeURIComponent(pin).trim().toUpperCase() : '';
 
@@ -53,13 +55,38 @@ const PlayPage: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    if (selected === null) return;
+    if (selected === null || !current) return;
     setSubmitted(true);
+    setAnswers((prev) => ({ ...prev, [current.id]: selected }));
     if (isCorrect) setCorrectCount((c) => c + 1);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setIndex(questions.length);
+    if (meta && normalizedPin && questions.length > 0 && !hasSavedToServer.current) {
+      hasSavedToServer.current = true;
+      const token = localStorage.getItem('auth_token');
+      const allAnswers = questions.map((q) => ({
+        questionId: q.id,
+        selectedAnswer: answers[q.id] ?? (current && q.id === current.id ? selected ?? '' : ''),
+      }));
+      if (token) {
+        try {
+          await attemptsApi.submit(token, normalizedPin, allAnswers);
+        } catch {
+          hasSavedToServer.current = false;
+        }
+      }
+    }
+  };
+
+  const handlePlayAgain = () => {
+    setIndex(0);
+    setSelected(null);
+    setSubmitted(false);
+    setCorrectCount(0);
+    setAnswers({});
+    hasSavedToServer.current = false;
   };
 
   if (loading) {
@@ -112,12 +139,26 @@ const PlayPage: React.FC = () => {
           <h2 className="text-xl font-bold text-slate-800 mb-2">Kết quả</h2>
           <p className="text-3xl font-bold text-indigo-600 mb-1">{correct} / {total}</p>
           <p className="text-slate-500 mb-6">câu đúng</p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            Về trang chủ
-          </button>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+            >
+              Về trang chủ
+            </button>
+            <button
+              onClick={handlePlayAgain}
+              className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium"
+            >
+              Làm lại
+            </button>
+            <button
+              onClick={() => navigate('/explore')}
+              className="px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 text-sm font-medium"
+            >
+              Khám phá thêm
+            </button>
+          </div>
         </div>
       </div>
     );

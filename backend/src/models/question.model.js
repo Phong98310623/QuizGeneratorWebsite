@@ -5,6 +5,13 @@ const optionSchema = new mongoose.Schema({
   isCorrect: { type: Boolean, default: false },
 }, { _id: false });
 
+const usedByEntrySchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  answer: { type: String, default: '' },
+  attemptedAt: { type: Date, default: Date.now },
+  attemptId: { type: mongoose.Schema.Types.ObjectId, ref: 'PlayAttempt', required: true },
+}, { _id: false });
+
 const questionSchema = new mongoose.Schema({
   content: { type: String, required: true },
   options: [optionSchema],
@@ -12,7 +19,8 @@ const questionSchema = new mongoose.Schema({
   tags: [{ type: String, trim: true }],
   difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
   explanation: { type: String },
-  usedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // user IDs đã dùng/trả lời câu hỏi
+  // Mỗi phần tử: { user, answer, attemptedAt, attemptId }. Dữ liệu cũ có thể là ObjectId (ref User).
+  usedBy: [{ type: mongoose.Schema.Types.Mixed }],
   verified: { type: Boolean, default: false },
   archived: { type: Boolean, default: false }, // nếu true thì ẩn khỏi UI / không dùng trong quiz
 }, { timestamps: true });

@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Difficulty, GeneratedQuestion, QuestionType } from '../types/quiz';
-import { generateQuestions } from '../services/geminiService';
-import { setsApi } from '../services/api';
+import { aiApi, setsApi } from '../services/api';
 import { Button } from './quiz/Button';
 import { Input } from './quiz/Input';
 import { Select } from './quiz/Select';
@@ -30,6 +29,7 @@ const AIQuestionGenerator: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedPin, setSavedPin] = useState<string | null>(null);
+  const topicInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setSaveTitle((prev) => (prev === '' || prev === topic ? topic : prev));
@@ -41,20 +41,60 @@ const AIQuestionGenerator: React.FC = () => {
       return;
     }
 
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setError('Bạn cần đăng nhập để tạo câu hỏi bằng AI.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setSaveError(null);
     setQuestions([]);
+    setSavedPin(null);
 
+    let list: GeneratedQuestion[] = [];
     try {
-      const result = await generateQuestions({
-        topic,
+      const result = await aiApi.generate(token, {
+        topic: topic.trim(),
         count,
         difficulty,
         type,
       });
-      setQuestions(result);
+      list = result.data as GeneratedQuestion[];
+      setQuestions(list);
+
+      if (result.fromCache && result.existingPin) {
+        setSavedPin(result.existingPin);
+      } else {
+        const title = (saveTitle || topic).trim() || topic.trim();
+        const payload = {
+          title,
+          description: saveDescription.trim() || undefined,
+          type: type || undefined,
+          questions: list.map((q) => ({
+            content: q.question,
+            options: q.options && q.options.length > 0 ? q.options : [q.correctAnswer],
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation || undefined,
+            difficulty: difficultyToBackend(difficulty),
+          })),
+          generatorTopic: topic.trim(),
+          generatorCount: count,
+          generatorDifficulty: difficulty,
+          generatorType: type,
+        };
+        const saveResult = await setsApi.create(token, payload);
+        setSavedPin(saveResult.pin || null);
+      }
     } catch (err: unknown) {
-      setError("Đã có lỗi xảy ra khi tạo câu hỏi. Vui lòng thử lại. (Kiểm tra API Key nếu cần)");
+      const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+      if (list.length > 0) {
+        setQuestions(list);
+        setSaveError(msg);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -65,6 +105,21 @@ const AIQuestionGenerator: React.FC = () => {
     const jsonStr = JSON.stringify(questions, null, 2);
     navigator.clipboard.writeText(jsonStr);
     alert("Đã sao chép dữ liệu JSON vào clipboard!");
+  };
+
+  const handleCopyPlayLink = () => {
+    if (!savedPin) return;
+    const url = `${window.location.origin}${window.location.pathname}#/play/${encodeURIComponent(savedPin)}`;
+    navigator.clipboard.writeText(url);
+    alert('Đã sao chép link chơi!');
+  };
+
+  const handleResetAndCreateAgain = () => {
+    setQuestions([]);
+    setSavedPin(null);
+    setError(null);
+    setSaveError(null);
+    setTimeout(() => topicInputRef.current?.focus(), 0);
   };
 
   const handleSaveSet = async () => {
@@ -92,6 +147,10 @@ const AIQuestionGenerator: React.FC = () => {
           explanation: q.explanation || undefined,
           difficulty: difficultyToBackend(difficulty),
         })),
+        generatorTopic: topic.trim() || undefined,
+        generatorCount: count,
+        generatorDifficulty: difficulty,
+        generatorType: type,
       };
       const result = await setsApi.create(token, payload);
       setSavedPin(result.pin || null);
@@ -105,6 +164,11 @@ const AIQuestionGenerator: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20">
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
+        <nav className="text-sm text-slate-500 mb-6">
+          <Link to="/dashboard" className="hover:text-indigo-600">Trang chủ</Link>
+          <span className="mx-2">/</span>
+          <span className="text-slate-700">Tạo câu hỏi</span>
+        </nav>
         <div className="mb-8 text-center sm:text-left">
           <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Tạo câu hỏi trong tích tắc</h2>
           <p className="text-slate-500 text-lg">
@@ -116,6 +180,7 @@ const AIQuestionGenerator: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="sm:col-span-2">
               <Input
+                ref={topicInputRef}
                 label="Chủ đề câu hỏi"
                 placeholder="Ví dụ: Lịch sử Việt Nam thế kỷ 19, Javascript căn bản..."
                 value={topic}
@@ -163,11 +228,30 @@ const AIQuestionGenerator: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <div className="sm:col-span-2">
+              <Input
+                label="Tên bộ câu hỏi (tùy chọn, mặc định = chủ đề)"
+                placeholder="Để trống sẽ dùng chủ đề làm tên"
+                value={saveTitle}
+                onChange={(e) => setSaveTitle(e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <input
+                type="text"
+                value={saveDescription}
+                onChange={(e) => setSaveDescription(e.target.value)}
+                placeholder="Mô tả (tùy chọn)"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              />
+              <p className="text-xs text-slate-400 mt-1">Nếu điền tên và mô tả trước, bộ câu hỏi sẽ được lưu với thông tin này.</p>
+            </div>
           </div>
 
           <div className="mt-8 flex justify-end">
             <Button onClick={handleGenerate} isLoading={loading} className="w-full sm:w-auto">
-              Tạo câu hỏi
+              Tạo câu hỏi (tự động lưu)
               <svg className="ml-2 -mr-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
@@ -186,11 +270,16 @@ const AIQuestionGenerator: React.FC = () => {
 
         {questions.length > 0 && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-xl font-bold text-slate-800">Kết quả ({questions.length})</h3>
-              <Button variant="secondary" onClick={handleCopyJSON} className="text-xs py-1.5 px-3 h-8">
-                Sao chép JSON
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={handleCopyJSON} className="text-xs py-1.5 px-3 h-8">
+                  Sao chép JSON
+                </Button>
+                <Button variant="secondary" onClick={handleResetAndCreateAgain} className="text-xs py-1.5 px-3 h-8">
+                  Tạo lại
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -203,18 +292,28 @@ const AIQuestionGenerator: React.FC = () => {
               <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
                 <p className="text-green-800 font-medium mb-1">Đã lưu bộ câu hỏi</p>
                 <p className="text-2xl font-mono font-bold text-green-700 mb-3">{savedPin}</p>
-                <p className="text-sm text-green-600 mb-4">Chia sẻ mã PIN này để người khác vào làm bài.</p>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/play/${encodeURIComponent(savedPin)}`)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  Vào làm bài
-                </button>
+                <p className="text-sm text-green-600 mb-4">Chia sẻ mã PIN hoặc link để người khác vào làm bài.</p>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <button
+                    type="button"
+                    onClick={handleCopyPlayLink}
+                    className="px-4 py-2 border border-green-600 text-green-700 rounded-lg hover:bg-green-100"
+                  >
+                    Sao chép link chơi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/play/${encodeURIComponent(savedPin)}`)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    Vào làm ngay
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <h4 className="font-semibold text-slate-800 mb-3">Lưu bộ câu hỏi</h4>
+                <p className="text-sm text-slate-500 mb-3">Tự động lưu thất bại hoặc bạn có thể chỉnh tên/mô tả và lưu lại.</p>
                 <div className="space-y-3 mb-4">
                   <input
                     type="text"

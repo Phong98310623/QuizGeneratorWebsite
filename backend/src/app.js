@@ -20,6 +20,7 @@ app.use('/api/reports', require('./routes/report.route'));
 app.use('/api/content', require('./routes/content.route'));
 app.use('/api/public', require('./routes/public.route'));
 app.use('/api/sets', require('./routes/sets.route'));
+app.use('/api/ai', require('./routes/ai.route'));
 
 /**
  * Serve React build

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -80,7 +80,28 @@ const AppRoutes: React.FC = () => {
           </AdminAuthProvider>
         }
       />
-      <Route path="*" element={<div className="p-10 text-center">404 - Không tìm thấy trang</div>} />
+      <Route
+        path="*"
+        element={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+            <div className="text-center max-w-md">
+              <h1 className="text-2xl font-bold text-slate-800 mb-2">Không tìm thấy trang</h1>
+              <p className="text-slate-500 mb-6">Trang bạn truy cập không tồn tại hoặc đã bị di chuyển.</p>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <Link to="/dashboard" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
+                  Về trang chủ
+                </Link>
+                <Link to="/explore" className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium">
+                  Khám phá
+                </Link>
+                <Link to="/create" className="px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 text-sm font-medium">
+                  Tạo câu hỏi
+                </Link>
+              </div>
+            </div>
+          </div>
+        }
+      />
     </Routes>
   );
 };

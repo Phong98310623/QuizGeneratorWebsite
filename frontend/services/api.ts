@@ -206,6 +206,93 @@ export const publicApi = {
   },
 };
 
+export interface AttemptHistoryDetail {
+  questionId: string;
+  content: string;
+  userAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+}
+
+export interface AttemptHistoryItem {
+  attemptId: string;
+  pin: string;
+  setTitle: string;
+  completedAt: string;
+  correctCount: number;
+  totalCount: number;
+  details: AttemptHistoryDetail[];
+}
+
+export const attemptsApi = {
+  submit: async (token: string, pin: string, answers: Array<{ questionId: string; selectedAnswer: string }>) => {
+    const normalized = String(pin).trim().toUpperCase();
+    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ answers }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi lưu kết quả');
+    return data as { success: boolean; data: { attemptId: string; pin: string; completedAt: string } };
+  },
+
+  getMyHistory: async (token: string): Promise<AttemptHistoryItem[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/me/history`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tải lịch sử');
+    return (data as { success: boolean; data: AttemptHistoryItem[] }).data;
+  },
+};
+
+/** Body gửi lên backend để AI sinh câu hỏi (key AI chỉ ở backend). */
+export interface AiGeneratePayload {
+  topic: string;
+  count: number;
+  difficulty: string;
+  type: string;
+}
+
+/** Câu hỏi do AI trả về (backend /api/ai/generate). */
+export interface GeneratedQuestionFromApi {
+  question: string;
+  options?: string[];
+  correctAnswer: string;
+  explanation: string;
+}
+
+export interface AiGenerateResult {
+  data: GeneratedQuestionFromApi[];
+  fromCache?: boolean;
+  existingPin?: string | null;
+}
+
+export const aiApi = {
+  generate: async (token: string, payload: AiGeneratePayload): Promise<AiGenerateResult> => {
+    const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json();
+    if (!response.ok) throw new Error((json as { message?: string }).message || 'Lỗi khi tạo câu hỏi bằng AI');
+    const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null };
+    return {
+      data: body.data,
+      fromCache: body.fromCache,
+      existingPin: body.existingPin ?? null,
+    };
+  },
+};
+
 export interface CreateSetPayload {
   title: string;
   description?: string;
@@ -218,6 +305,11 @@ export interface CreateSetPayload {
     difficulty?: string;
     explanation?: string;
   }>;
+  /** Để cache prompt trong question_sets (trùng thì không gọi AI lại). */
+  generatorTopic?: string;
+  generatorCount?: number;
+  generatorDifficulty?: string;
+  generatorType?: string;
 }
 
 export const setsApi = {

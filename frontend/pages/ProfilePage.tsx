@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authService } from '../services/api';
+import { authService, attemptsApi, AttemptHistoryItem } from '../services/api';
 import { stringToSafeColor } from '../utils/avatar';
 
 const MAX_AVATAR_BYTES = 450000;
@@ -67,6 +68,20 @@ const ProfilePage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [history, setHistory] = useState<AttemptHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [expandedAttemptId, setExpandedAttemptId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setHistoryLoading(false);
+      return;
+    }
+    attemptsApi.getMyHistory(token).then((data) => {
+      setHistory(data);
+    }).catch(() => setHistory([])).finally(() => setHistoryLoading(false));
+  }, []);
 
   if (!user) return null;
 
@@ -183,6 +198,10 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-12">
+      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600 mb-6">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        Quay lại Trang chủ
+      </Link>
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Hồ sơ cá nhân</h1>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
@@ -318,6 +337,66 @@ const ProfilePage: React.FC = () => {
             {passwordSaving ? 'Đang đổi...' : 'Đổi mật khẩu'}
           </button>
         </form>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-slate-800 mb-4">Hoạt động gần đây</h2>
+        {historyLoading ? (
+          <p className="text-slate-500 text-sm">Đang tải...</p>
+        ) : history.length === 0 ? (
+          <p className="text-slate-500 text-sm">Các bộ câu hỏi bạn đã làm sẽ hiển thị ở đây.</p>
+        ) : (
+          <ul className="space-y-4">
+            {history.map((item) => (
+              <li key={item.attemptId} className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between gap-3 p-4 bg-slate-50">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-800 truncate">{item.setTitle}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {item.correctCount}/{item.totalCount} câu đúng · {new Date(item.completedAt).toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                  <Link
+                    to={`/play/${encodeURIComponent(item.pin)}`}
+                    className="shrink-0 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                  >
+                    Làm lại
+                  </Link>
+                </div>
+                <div className="border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedAttemptId((id) => (id === item.attemptId ? null : item.attemptId))}
+                    className="w-full px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center justify-between"
+                  >
+                    Xem chi tiết từng câu
+                    <svg className={`w-4 h-4 transition-transform ${expandedAttemptId === item.attemptId ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedAttemptId === item.attemptId && item.details.length > 0 && (
+                    <ul className="px-4 pb-4 space-y-2">
+                      {item.details.map((d, i) => (
+                        <li key={d.questionId} className="text-sm p-3 rounded-lg border border-slate-100 bg-white">
+                          <p className="font-medium text-slate-800 mb-1">{d.content}</p>
+                          <p className="text-slate-600">
+                            Bạn chọn: <span className={d.isCorrect ? 'text-green-600 font-medium' : 'text-red-600'}>{d.userAnswer || '—'}</span>
+                            {!d.isCorrect && d.correctAnswer && (
+                              <span className="block mt-0.5 text-slate-500">Đáp án đúng: {d.correctAnswer}</span>
+                            )}
+                          </p>
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 ${d.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                            {d.isCorrect ? '✓ Đúng' : '✗ Sai'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

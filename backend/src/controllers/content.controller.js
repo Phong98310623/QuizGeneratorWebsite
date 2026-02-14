@@ -7,7 +7,16 @@ const Question = require('../models/question.model');
  */
 const createSet = async (req, res) => {
   try {
-    const { title, description, type, questions: rawQuestions } = req.body;
+    const {
+      title,
+      description,
+      type,
+      questions: rawQuestions,
+      generatorTopic,
+      generatorCount,
+      generatorDifficulty,
+      generatorType,
+    } = req.body;
     if (!title || !Array.isArray(rawQuestions) || rawQuestions.length === 0) {
       return res.status(400).json({ success: false, message: 'Cần tiêu đề và ít nhất một câu hỏi' });
     }
@@ -44,15 +53,20 @@ const createSet = async (req, res) => {
     }
 
     const pin = await QuestionSet.generateUniquePin();
-    const set = await QuestionSet.create({
+    const setPayload = {
       title: String(title).trim(),
       description: description ? String(description).trim() : '',
       type: type ? String(type).trim() : 'Other',
       questionIds: questionDocs,
       verified: false,
-      createdBy: req.user.id,
+      createdBy: req.user._id || req.user.id,
       pin,
-    });
+    };
+    if (generatorTopic != null && String(generatorTopic).trim()) setPayload.generatorTopic = String(generatorTopic).trim();
+    if (generatorCount != null) setPayload.generatorCount = Math.min(10, Math.max(1, parseInt(generatorCount, 10) || 0)) || undefined;
+    if (generatorDifficulty != null && String(generatorDifficulty).trim()) setPayload.generatorDifficulty = String(generatorDifficulty).trim();
+    if (generatorType != null && String(generatorType).trim()) setPayload.generatorType = String(generatorType).trim();
+    const set = await QuestionSet.create(setPayload);
 
     return res.status(201).json({
       success: true,

@@ -1,5 +1,7 @@
 const QuestionSet = require('../models/question_set.model');
 const Question = require('../models/question.model');
+const PlayAttempt = require('../models/play_attempt.model');
+const mongoose = require('mongoose');
 
 /**
  * GET /api/public/sets
@@ -118,8 +120,67 @@ const getQuestionsByPin = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/public/sets/by-pin/:pin/submit (protect)
+ * Body: { answers: [{ questionId, selectedAnswer }] }
+ * Ghi nhận lần làm bài: tạo PlayAttempt, cập nhật usedBy từng câu hỏi.
+ */
+const submitAttempt = async (req, res) => {
+  try {
+    const pin = String(req.params.pin || '').trim().toUpperCase();
+    const { answers } = req.body || {};
+    if (!pin || !Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ success: false, message: 'Thiếu mã PIN hoặc danh sách câu trả lời' });
+    }
+
+    const set = await QuestionSet.findOne({ pin }).lean();
+    if (!set) {
+      return res.status(404).json({ success: false, message: 'Bộ câu hỏi không tồn tại' });
+    }
+
+    const questionIds = Array.isArray(set.questionIds) ? set.questionIds.map((id) => id.toString()) : [];
+    const attempt = await PlayAttempt.create({
+      userId: req.user._id,
+      pin,
+      completedAt: new Date(),
+    });
+
+    const attemptedAt = attempt.completedAt;
+    for (const item of answers) {
+      const qId = item.questionId;
+      const selectedAnswer = item.selectedAnswer != null ? String(item.selectedAnswer).trim() : '';
+      if (!qId || !questionIds.includes(qId)) continue;
+      if (!mongoose.isValidObjectId(qId)) continue;
+
+      await Question.findByIdAndUpdate(qId, {
+        $push: {
+          usedBy: {
+            user: req.user._id,
+            answer: selectedAnswer,
+            attemptedAt,
+            attemptId: attempt._id,
+          },
+        },
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        attemptId: attempt._id.toString(),
+        pin,
+        completedAt: attempt.completedAt,
+      },
+    });
+  } catch (error) {
+    console.error('submitAttempt error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi lưu kết quả' });
+  }
+};
+
 module.exports = {
   listVerifiedSets,
   getSetByPin,
   getQuestionsByPin,
+  submitAttempt,
 };

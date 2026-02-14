@@ -11,7 +11,16 @@ const ExplorePage: React.FC = () => {
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
   const [offset, setOffset] = useState(0);
+  const [copiedPin, setCopiedPin] = useState<string | null>(null);
   const limit = 12;
+
+  const copyPin = (e: React.MouseEvent, pin: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(pin).then(() => {
+      setCopiedPin(pin);
+      setTimeout(() => setCopiedPin(null), 2000);
+    });
+  };
 
   const load = async (resetOffset = false) => {
     const off = resetOffset ? 0 : offset;
@@ -79,6 +88,14 @@ const ExplorePage: React.FC = () => {
         <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
           Tìm kiếm
         </button>
+        <button
+          type="button"
+          onClick={() => load(true)}
+          disabled={loading}
+          className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+        >
+          Làm mới
+        </button>
       </form>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
@@ -101,7 +118,32 @@ const ExplorePage: React.FC = () => {
                   <span>{s.type || 'Other'}</span>
                   <span>{s.count} câu</span>
                 </div>
-                {s.pin ? <p className="text-xs text-indigo-600 mt-1">PIN: {s.pin}</p> : <p className="text-xs text-slate-400 mt-1">Chưa có mã PIN</p>}
+                <div className="flex items-center justify-between mt-2 gap-2">
+                  {s.pin ? (
+                    <>
+                      <p className="text-xs text-indigo-600">PIN: {s.pin}</p>
+                      <button
+                        type="button"
+                        onClick={(e) => copyPin(e, s.pin!)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200"
+                        title="Sao chép PIN"
+                      >
+                        {copiedPin === s.pin ? (
+                          'Đã sao chép'
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Sao chép PIN
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-400">Chưa có mã PIN</p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
