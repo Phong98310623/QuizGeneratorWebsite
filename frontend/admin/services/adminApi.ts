@@ -54,6 +54,23 @@ export const adminApi = {
     return { user, token };
   },
 
+  getUser: async (id: string, token: string): Promise<User> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin user');
+    const u = data?.data ?? data;
+    return {
+      id: String(u.id ?? u._id ?? ''),
+      email: String(u.email ?? ''),
+      fullName: String(u.username ?? u.email ?? ''),
+      role: u.role ?? 'USER',
+      status: u.status,
+      createdAt: u.createdAt,
+    };
+  },
+
   getAllUsers: async (token: string): Promise<User[]> => {
     const response = await fetch(`${API_BASE_URL}/api/users`, {
       method: 'GET',
@@ -273,6 +290,70 @@ export const adminApi = {
       throw new Error(message);
     }
 
+    return data?.data ?? data;
+  },
+
+  getSetById: async (setId: string, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/sets/${setId}`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin bộ câu hỏi');
+    return data?.data ?? data;
+  },
+
+  getQuestionById: async (questionId: string, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/questions/${questionId}`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin câu hỏi');
+    return data?.data ?? data;
+  },
+
+  updateQuestion: async (
+    id: string,
+    payload: { content?: string; options?: Array<{ text: string; isCorrect?: boolean }>; correctAnswer?: string; difficulty?: string; explanation?: string },
+    token: string
+  ) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể cập nhật câu hỏi');
+    return data?.data ?? data;
+  },
+
+  verifyQuestion: async (id: string, verified: boolean, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}/verify`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ verified }),
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể cập nhật verify');
+    return data?.data ?? data;
+  },
+
+  archiveQuestion: async (id: string, archived: boolean, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}/archive`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ archived }),
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể cập nhật archive');
     return data?.data ?? data;
   },
 

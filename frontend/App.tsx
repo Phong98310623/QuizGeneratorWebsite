@@ -19,6 +19,9 @@ import AdminUserManagement from './admin/pages/UserManagement';
 import AdminBlacklist from './admin/pages/Blacklist';
 import AdminContentManagement from './admin/pages/ContentManagement';
 import AdminReportModeration from './admin/pages/ReportModeration';
+import UserPreviewPage from './admin/pages/preview/UserPreviewPage';
+import QuestionPreviewPage from './admin/pages/preview/QuestionPreviewPage';
+import SetPreviewPage from './admin/pages/preview/SetPreviewPage';
 
 // Component bảo vệ Route (user đã đăng nhập)
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -73,6 +76,9 @@ const AppRoutes: React.FC = () => {
                   <Route path="blacklist" element={<AdminBlacklist />} />
                   <Route path="content" element={<AdminContentManagement />} />
                   <Route path="reports" element={<AdminReportModeration />} />
+                  <Route path="preview/user/:id" element={<UserPreviewPage />} />
+                  <Route path="preview/question/:id" element={<QuestionPreviewPage />} />
+                  <Route path="preview/set/:id" element={<SetPreviewPage />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Routes>
               </AdminLayout>

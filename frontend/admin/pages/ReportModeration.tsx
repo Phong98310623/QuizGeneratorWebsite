@@ -14,6 +14,7 @@ import {
   Clock,
   ShieldAlert,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { adminApi } from '../services/adminApi';
@@ -47,6 +48,7 @@ const ReportModeration: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<ReportStatus | 'ALL'>('ALL');
   const [typeFilter, setTypeFilter] = useState<ReportEntityType | 'ALL'>('ALL');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [iframeEntity, setIframeEntity] = useState<{ type: string; id: string } | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
@@ -140,6 +142,21 @@ const ReportModeration: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể dismiss report');
     }
+  };
+
+  const getPreviewType = (type: ReportEntityType): string => {
+    switch (type) {
+      case 'USER': return 'user';
+      case 'CONTENT': return 'question';
+      case 'QUIZ': return 'set';
+      default: return 'user';
+    }
+  };
+
+  const handleEntityClick = (report: Report) => {
+    if (report.reportedEntityType === 'OTHER') return;
+    const previewType = getPreviewType(report.reportedEntityType);
+    setIframeEntity({ type: previewType, id: report.reportedEntityId });
   };
 
   const getEntityIcon = (type: ReportEntityType) => {
@@ -348,9 +365,19 @@ const ReportModeration: React.FC = () => {
                           <span className="font-medium text-slate-900">{report.reporterName}</span>
                         </div>
                         <p className="text-xs text-slate-500">{report.reporterEmail}</p>
-                        <p className="text-xs text-indigo-600 font-medium mt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleEntityClick(report)}
+                          disabled={report.reportedEntityType === 'OTHER'}
+                          className={`text-xs font-medium mt-1 text-left block max-w-full truncate ${
+                            report.reportedEntityType === 'OTHER'
+                              ? 'text-slate-400 cursor-default'
+                              : 'text-indigo-600 hover:text-indigo-700 hover:underline cursor-pointer'
+                          }`}
+                          title={report.reportedEntityType === 'OTHER' ? '' : 'Xem chi tiết'}
+                        >
                           → {report.reportedEntityTitle}
-                        </p>
+                        </button>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -431,6 +458,19 @@ const ReportModeration: React.FC = () => {
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Reported</p>
                 <p className="font-medium text-slate-900">{selectedReport.reportedEntityTitle}</p>
                 <p className="text-sm text-slate-500">{selectedReport.reportedEntityType} · {selectedReport.reportedEntityId}</p>
+                {selectedReport.reportedEntityType !== 'OTHER' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedReport(null);
+                      handleEntityClick(selectedReport);
+                    }}
+                    className="mt-2 text-sm text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1"
+                  >
+                    <Eye size={14} />
+                    Xem chi tiết trong iframe
+                  </button>
+                )}
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Reason</p>
@@ -472,6 +512,31 @@ const ReportModeration: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal iframe xem chi tiết entity */}
+      {iframeEntity && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900">Chi tiết nội dung bị báo cáo</h3>
+              <button
+                onClick={() => setIframeEntity(null)}
+                className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <iframe
+                src={`${window.location.origin}${window.location.pathname}#/admin/preview/${iframeEntity.type}/${encodeURIComponent(iframeEntity.id)}`}
+                title="Entity preview"
+                className="w-full h-full border-0 rounded-b-2xl"
+                sandbox="allow-same-origin allow-scripts"
+              />
+            </div>
           </div>
         </div>
       )}

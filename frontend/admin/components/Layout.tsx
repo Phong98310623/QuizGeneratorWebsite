@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
+const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -28,6 +30,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     logout();
     navigate('/admin/login');
   };
+
+  if (isInIframe) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="p-4">{children}</div>
+      </div>
+    );
+  }
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20} /> },

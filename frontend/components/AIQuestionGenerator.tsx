@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { Difficulty, GeneratedQuestion, QuestionType } from '../types/quiz';
 import { aiApi, setsApi } from '../services/api';
 import { Button } from './quiz/Button';
@@ -292,22 +293,32 @@ const AIQuestionGenerator: React.FC = () => {
               <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
                 <p className="text-green-800 font-medium mb-1">Đã lưu bộ câu hỏi</p>
                 <p className="text-2xl font-mono font-bold text-green-700 mb-3">{savedPin}</p>
-                <p className="text-sm text-green-600 mb-4">Chia sẻ mã PIN hoặc link để người khác vào làm bài.</p>
-                <div className="flex flex-wrap gap-3 justify-center">
-                  <button
-                    type="button"
-                    onClick={handleCopyPlayLink}
-                    className="px-4 py-2 border border-green-600 text-green-700 rounded-lg hover:bg-green-100"
-                  >
-                    Sao chép link chơi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/play/${encodeURIComponent(savedPin)}`)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    Vào làm ngay
-                  </button>
+                <p className="text-sm text-green-600 mb-4">Chia sẻ mã PIN, link hoặc quét mã QR để người khác vào làm bài.</p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-4">
+                  <div className="bg-white p-3 rounded-xl border border-green-200 inline-flex shrink-0">
+                    <QRCodeSVG
+                      value={typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}#/play/${encodeURIComponent(savedPin)}` : ''}
+                      size={160}
+                      level="M"
+                      includeMargin={false}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    <button
+                      type="button"
+                      onClick={handleCopyPlayLink}
+                      className="px-4 py-2 border border-green-600 text-green-700 rounded-lg hover:bg-green-100"
+                    >
+                      Sao chép link chơi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/play/${encodeURIComponent(savedPin)}`)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Vào làm ngay
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (

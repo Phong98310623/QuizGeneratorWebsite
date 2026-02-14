@@ -312,6 +312,31 @@ export interface CreateSetPayload {
   generatorType?: string;
 }
 
+export interface CreateReportPayload {
+  reporterName: string;
+  reporterEmail: string;
+  reportedEntityType: 'USER' | 'QUIZ' | 'CONTENT' | 'OTHER';
+  reportedEntityId: string;
+  reportedEntityTitle: string;
+  reason: string;
+  description?: string;
+}
+
+export const reportApi = {
+  create: async (payload: CreateReportPayload): Promise<{ success: boolean; data?: { id: string; status: string } }> => {
+    const response = await fetch(`${API_BASE_URL}/api/reports`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = (await response.json()) as { success?: boolean; data?: { id: string; status: string }; message?: string };
+    if (!response.ok) {
+      throw new Error(data.message || 'Không thể gửi báo cáo');
+    }
+    return { success: data.success ?? true, data: data.data };
+  },
+};
+
 export const setsApi = {
   create: async (token: string, payload: CreateSetPayload) => {
     const response = await fetch(`${API_BASE_URL}/api/sets`, {

@@ -1,5 +1,6 @@
 const QuestionSet = require('../models/question_set.model');
 const Question = require('../models/question.model');
+const User = require('../models/user.model');
 
 /**
  * POST /api/sets (protect) - User creates a set from generated questions. Body: { title, description?, type?, questions: [...] }
@@ -96,6 +97,138 @@ const getStats = async (req, res) => {
   } catch (error) {
     console.error('getStats error:', error);
     res.status(500).json({ success: false, message: 'Lỗi khi tải thống kê' });
+  }
+};
+
+const getSetById = async (req, res) => {
+  try {
+    const set = await QuestionSet.findById(req.params.id).lean();
+    if (!set) {
+      return res.status(404).json({ success: false, message: 'Question set không tồn tại' });
+    }
+    res.json({
+      id: set._id.toString(),
+      title: set.title,
+      description: set.description || '',
+      type: set.type || 'Other',
+      pin: set.pin || null,
+      count: Array.isArray(set.questionIds) ? set.questionIds.length : 0,
+      verified: !!set.verified,
+    });
+  } catch (error) {
+    console.error('getSetById error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi tải thông tin bộ câu hỏi' });
+  }
+};
+
+const getQuestionById = async (req, res) => {
+  try {
+    const question = await Question.findById(req.params.id).lean();
+    if (!question) {
+      return res.status(404).json({ success: false, message: 'Câu hỏi không tồn tại' });
+    }
+
+    const correctAnswer = question.correctAnswer || '';
+    const options = question.options || [];
+    const usedByRaw = Array.isArray(question.usedBy) ? question.usedBy : [];
+
+    const userIds = new Set();
+    const usedByEntries = [];
+    for (const entry of usedByRaw) {
+      let userId, answer, attemptedAt;
+      if (entry && typeof entry === 'object' && entry.user) {
+        userId = entry.user?.toString?.() || entry.user;
+        answer = entry.answer != null ? String(entry.answer).trim() : '';
+        attemptedAt = entry.attemptedAt;
+      } else if (typeof entry === 'string' || (entry && entry.toString)) {
+        userId = String(entry);
+        answer = '';
+        attemptedAt = null;
+      } else continue;
+      if (!userId) continue;
+      userIds.add(userId);
+
+      let isCorrect = false;
+      if (answer) {
+        if (correctAnswer && answer === correctAnswer) isCorrect = true;
+        else if (options.length) {
+          const correctOpt = options.find((o) => o && o.isCorrect);
+          if (correctOpt && answer === correctOpt.text) isCorrect = true;
+        }
+      }
+
+      usedByEntries.push({ userId, answer, attemptedAt, isCorrect });
+    }
+
+    const usersMap = {};
+    if (userIds.size > 0) {
+      const users = await User.find({ _id: { $in: Array.from(userIds) } })
+        .select('email username')
+        .lean();
+      for (const u of users) {
+        usersMap[u._id.toString()] = {
+          id: u._id.toString(),
+          email: u.email || '',
+          fullName: u.username || u.email || '—',
+        };
+      }
+    }
+
+    const userStats = {};
+    for (const e of usedByEntries) {
+      if (!userStats[e.userId]) {
+        userStats[e.userId] = { total: 0, correct: 0, user: usersMap[e.userId] || { id: e.userId, email: '—', fullName: '—' } };
+      }
+      userStats[e.userId].total += 1;
+      if (e.isCorrect) userStats[e.userId].correct += 1;
+    }
+    const usedByUsers = Object.values(userStats).map((s) => ({
+      ...s.user,
+      totalAttempts: s.total,
+      correctAttempts: s.correct,
+      ratio: s.total > 0 ? `${s.correct}/${s.total}` : '0/0',
+    }));
+
+    let creator = null;
+    let questionSet = null;
+    const setWithQuestion = await QuestionSet.findOne({ questionIds: question._id })
+      .populate('createdBy', 'email username')
+      .lean();
+    if (setWithQuestion) {
+      questionSet = {
+        id: setWithQuestion._id.toString(),
+        title: setWithQuestion.title || '—',
+      };
+      if (setWithQuestion.createdBy) {
+        const c = setWithQuestion.createdBy;
+        creator = {
+          id: c._id.toString(),
+          email: c.email || '',
+          fullName: c.username || c.email || '—',
+        };
+      }
+    }
+
+    res.json({
+      id: question._id.toString(),
+      content: question.content,
+      options: question.options || [],
+      correctAnswer: question.correctAnswer,
+      tags: question.tags || [],
+      difficulty: question.difficulty || 'medium',
+      explanation: question.explanation,
+      verified: !!question.verified,
+      archived: !!question.archived,
+      createdAt: question.createdAt?.toISOString?.() ?? question.createdAt,
+      updatedAt: question.updatedAt?.toISOString?.() ?? question.updatedAt,
+      usedCount: usedByEntries.length,
+      usedByUsers,
+      creator,
+      questionSet,
+    });
+  } catch (error) {
+    console.error('getQuestionById error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi tải thông tin câu hỏi' });
   }
 };
 
@@ -206,6 +339,97 @@ const updateQuestionSetVerify = async (req, res) => {
   }
 };
 
+const updateQuestion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content, options, correctAnswer, difficulty, explanation } = req.body;
+    const update = {};
+    if (content !== undefined) update.content = String(content).trim();
+    if (correctAnswer !== undefined) update.correctAnswer = String(correctAnswer).trim();
+    if (explanation !== undefined) update.explanation = String(explanation).trim() || null;
+    if (difficulty !== undefined && ['easy', 'medium', 'hard'].includes(String(difficulty).toLowerCase())) {
+      update.difficulty = String(difficulty).toLowerCase();
+    }
+    if (options !== undefined && Array.isArray(options)) {
+      update.options = options.map((o) => {
+        if (typeof o === 'string') {
+          return { text: String(o).trim(), isCorrect: false };
+        }
+        return {
+          text: String(o?.text ?? o?.option ?? '').trim(),
+          isCorrect: !!o?.isCorrect,
+        };
+      }).filter((o) => o.text);
+    }
+    const question = await Question.findByIdAndUpdate(id, update, { new: true }).lean();
+    if (!question) {
+      return res.status(404).json({ success: false, message: 'Câu hỏi không tồn tại' });
+    }
+    res.json({
+      success: true,
+      data: {
+        id: question._id.toString(),
+        content: question.content,
+        options: question.options || [],
+        correctAnswer: question.correctAnswer,
+        difficulty: question.difficulty,
+        explanation: question.explanation,
+      },
+    });
+  } catch (error) {
+    console.error('updateQuestion error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi cập nhật câu hỏi' });
+  }
+};
+
+const updateQuestionVerify = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { verified } = req.body;
+    if (typeof verified !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Trường "verified" phải là boolean' });
+    }
+    const question = await Question.findByIdAndUpdate(id, { verified }, { new: true }).lean();
+    if (!question) {
+      return res.status(404).json({ success: false, message: 'Câu hỏi không tồn tại' });
+    }
+    res.json({
+      success: true,
+      data: {
+        id: question._id.toString(),
+        verified: !!question.verified,
+      },
+    });
+  } catch (error) {
+    console.error('updateQuestionVerify error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi cập nhật trạng thái verify' });
+  }
+};
+
+const updateQuestionArchive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { archived } = req.body;
+    if (typeof archived !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Trường "archived" phải là boolean' });
+    }
+    const question = await Question.findByIdAndUpdate(id, { archived }, { new: true }).lean();
+    if (!question) {
+      return res.status(404).json({ success: false, message: 'Câu hỏi không tồn tại' });
+    }
+    res.json({
+      success: true,
+      data: {
+        id: question._id.toString(),
+        archived: !!question.archived,
+      },
+    });
+  } catch (error) {
+    console.error('updateQuestionArchive error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi cập nhật trạng thái archive' });
+  }
+};
+
 const reviewQuestion = async (req, res) => {
   try {
     const { id } = req.params;
@@ -254,10 +478,15 @@ const reviewQuestion = async (req, res) => {
 
 module.exports = {
   getStats,
+  getSetById,
+  getQuestionById,
   getQuestionSets,
   getQuestions,
   getQuestionsBySet,
   updateQuestionSetVerify,
+  updateQuestion,
+  updateQuestionVerify,
+  updateQuestionArchive,
   reviewQuestion,
   createSet,
 };
