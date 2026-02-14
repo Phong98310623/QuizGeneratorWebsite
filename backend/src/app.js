@@ -4,13 +4,13 @@ const cors = require("cors");
 
 const app = express();
 
-// Cho phép frontend (Vite dev server) gọi API từ origin khác (CORS)
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+// // Cho phép frontend (Vite dev server) gọi API từ origin khác (CORS)
+// app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 
 // Cho phép nhúng iframe từ cùng domain (frontend 3000, backend 5000)
 app.use((req, res, next) => {
   const baseUrl = process.env.BASE_URL || "http://localhost";
-  const origins = process.env.FRAME_ANCESTORS || `'self' ${baseUrl}:3000 ${baseUrl}:5000`;
+  const origins = process.env.FRAME_ANCESTORS || `'self' ${baseUrl}:3000 ${baseUrl}:3000`;
   res.setHeader("Content-Security-Policy", `frame-ancestors ${origins}`);
   next();
 });
