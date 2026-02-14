@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Flag, X, Frown, Heart, Bookmark, Copy } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { publicApi, attemptsApi, reportApi, userFavoritesApi, PlayQuestion, QuestionSetMeta, SavedCollection } from '../services/api';
 
 const CONFETTI_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444'];
@@ -162,29 +163,28 @@ const PlayPage: React.FC = () => {
     })();
   }, [normalizedPin]);
 
+  const { isAuthenticated } = useAuth();
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
+    if (!isAuthenticated) return;
     (async () => {
       try {
-        const data = await userFavoritesApi.get(token);
+        const data = await userFavoritesApi.get(null as any);
         setFavorites(data.favorites || []);
         setSavedCollections(data.savedCollections || []);
       } catch {
         // User might not have favorites yet
       }
     })();
-  }, []);
+  }, [isAuthenticated]);
 
   const current = questions[index];
-  const token = localStorage.getItem('auth_token');
-  const isFavorite = current && token ? favorites.includes(current.id) : false;
+  const isFavorite = current && isAuthenticated ? favorites.includes(current.id) : false;
 
   const handleToggleFavorite = async () => {
-    if (!token || !current) return;
+    if (!isAuthenticated || !current) return;
     setFavoritesLoading(true);
     try {
-      const res = await userFavoritesApi.toggleFavorite(token, current.id);
+      const res = await userFavoritesApi.toggleFavorite(null as any, current.id);
       setFavorites(res.favorites);
     } catch {
       // ignore
@@ -194,17 +194,17 @@ const PlayPage: React.FC = () => {
   };
 
   const handleOpenBookmarkModal = () => {
-    if (!token || !current) return;
+    if (!isAuthenticated || !current) return;
     setShowAddCollectionInput(false);
     setNewCollectionName('');
     setShowBookmarkModal(true);
   };
 
   const handleAddToCollection = async (nameid: string) => {
-    if (!token || !current) return;
+    if (!isAuthenticated || !current) return;
     setCollectionActionLoading(nameid);
     try {
-      const updated = await userFavoritesApi.addToCollection(token, nameid, current.id);
+      const updated = await userFavoritesApi.addToCollection(null as any, nameid, current.id);
       setSavedCollections((prev) =>
         prev.map((c) => (c.nameid === nameid ? updated : c))
       );
@@ -216,10 +216,10 @@ const PlayPage: React.FC = () => {
   };
 
   const handleCreateCollection = async () => {
-    if (!token || !newCollectionName.trim()) return;
+    if (!isAuthenticated || !newCollectionName.trim()) return;
     setCollectionActionLoading('create');
     try {
-      const created = await userFavoritesApi.createCollection(token, newCollectionName.trim());
+      const created = await userFavoritesApi.createCollection(null as any, newCollectionName.trim());
       setSavedCollections((prev) => [...prev, created]);
       setNewCollectionName('');
       setShowAddCollectionInput(false);
@@ -249,19 +249,16 @@ const PlayPage: React.FC = () => {
 
   const handleFinish = async () => {
     setIndex(questions.length);
-    if (meta && normalizedPin && questions.length > 0 && !hasSavedToServer.current) {
+    if (meta && normalizedPin && questions.length > 0 && !hasSavedToServer.current && isAuthenticated) {
       hasSavedToServer.current = true;
-      const token = localStorage.getItem('auth_token');
       const allAnswers = questions.map((q) => ({
         questionId: q.id,
         selectedAnswer: answers[q.id] ?? (current && q.id === current.id ? selected ?? '' : ''),
       }));
-      if (token) {
-        try {
-          await attemptsApi.submit(token, normalizedPin, allAnswers);
-        } catch {
-          hasSavedToServer.current = false;
-        }
+      try {
+        await attemptsApi.submit(null as any, normalizedPin, allAnswers);
+      } catch {
+        hasSavedToServer.current = false;
       }
     }
   };
@@ -446,7 +443,7 @@ const PlayPage: React.FC = () => {
           <div className="flex items-start justify-between gap-3 mb-6">
             <h2 className="text-lg font-semibold text-slate-800 flex-1">{q.content}</h2>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {token && (
+              {isAuthenticated && (
                 <>
                   <button
                     type="button"
@@ -610,7 +607,7 @@ const PlayPage: React.FC = () => {
       )}
 
       {/* Modal Lưu vào bộ sưu tập */}
-      {showBookmarkModal && token && current && (
+      {showBookmarkModal && isAuthenticated && current && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
           onClick={() => setShowBookmarkModal(false)}

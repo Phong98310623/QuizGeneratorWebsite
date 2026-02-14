@@ -40,7 +40,7 @@ export interface Report {
 }
 
 const ReportModeration: React.FC = () => {
-  const { token } = useAdminAuth();
+  const { isAuthenticated } = useAdminAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ const ReportModeration: React.FC = () => {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
   const fetchReports = useCallback(async () => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Yêu cầu đăng nhập');
       setLoading(false);
       return;
@@ -62,7 +62,7 @@ const ReportModeration: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const list = await adminApi.getReports(token);
+      const list = await adminApi.getReports();
       setReports(Array.isArray(list) ? list : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể tải danh sách report');
@@ -70,7 +70,7 @@ const ReportModeration: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchReports();
@@ -98,10 +98,10 @@ const ReportModeration: React.FC = () => {
   }, [reports]);
 
   const handleResolve = async (id: string) => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     setIsResolving(true);
     try {
-      const result = await adminApi.resolveReport(id, token);
+      const result = await adminApi.resolveReport(id);
       setReports((prev) =>
         prev.map((r) =>
           r.id === id
@@ -123,9 +123,9 @@ const ReportModeration: React.FC = () => {
   };
 
   const handleDismiss = async (id: string) => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     try {
-      const result = await adminApi.dismissReport(id, token);
+      const result = await adminApi.dismissReport(id);
       setReports((prev) =>
         prev.map((r) =>
           r.id === id

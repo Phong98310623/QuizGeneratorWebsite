@@ -24,8 +24,8 @@ const AdminLoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const { user, token } = await adminApi.login(emailOrUsername, password);
-      login(user, token);
+      const { user } = await adminApi.login(emailOrUsername, password);
+      login(user);
       navigate('/admin');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đăng nhập admin thất bại');

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Difficulty, GeneratedQuestion, QuestionType } from '../types/quiz';
+import { useAuth } from '../context/AuthContext';
 import { aiApi, setsApi } from '../services/api';
 import { Button } from './quiz/Button';
 import { Input } from './quiz/Input';
@@ -16,6 +17,7 @@ const difficultyToBackend = (d: Difficulty) => {
 
 const AIQuestionGenerator: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [type, setType] = useState<QuestionType>(QuestionType.MULTIPLE_CHOICE);
@@ -42,8 +44,7 @@ const AIQuestionGenerator: React.FC = () => {
       return;
     }
 
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Bạn cần đăng nhập để tạo câu hỏi bằng AI.');
       return;
     }
@@ -56,7 +57,7 @@ const AIQuestionGenerator: React.FC = () => {
 
     let list: GeneratedQuestion[] = [];
     try {
-      const result = await aiApi.generate(token, {
+      const result = await aiApi.generate(null as any, {
         topic: topic.trim(),
         count,
         difficulty,
@@ -85,7 +86,7 @@ const AIQuestionGenerator: React.FC = () => {
           generatorDifficulty: difficulty,
           generatorType: type,
         };
-        const saveResult = await setsApi.create(token, payload);
+        const saveResult = await setsApi.create(null as any, payload);
         setSavedPin(saveResult.pin || null);
       }
     } catch (err: unknown) {
@@ -129,8 +130,7 @@ const AIQuestionGenerator: React.FC = () => {
       setSaveError('Vui lòng nhập tên bộ câu hỏi.');
       return;
     }
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setSaveError('Bạn cần đăng nhập để lưu bộ câu hỏi.');
       return;
     }
@@ -153,7 +153,7 @@ const AIQuestionGenerator: React.FC = () => {
         generatorDifficulty: difficulty,
         generatorType: type,
       };
-      const result = await setsApi.create(token, payload);
+      const result = await setsApi.create(null as any, payload);
       setSavedPin(result.pin || null);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Lỗi khi lưu.');

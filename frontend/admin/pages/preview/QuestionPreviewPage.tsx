@@ -139,7 +139,7 @@ const EditableField: React.FC<EditableFieldProps> = ({
 const QuestionPreviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { token } = useAdminAuth();
+  const { isAuthenticated } = useAdminAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<QuestionData | null>(null);
@@ -155,11 +155,11 @@ const QuestionPreviewPage: React.FC = () => {
   const popoverUser = (data?.usedByUsers ?? []).find((u) => u.id === popoverUserId);
 
   const fetchData = useCallback(async () => {
-    if (!token || !id) return;
+    if (!isAuthenticated || !id) return;
     try {
       setLoading(true);
       setError(null);
-      const q = await adminApi.getQuestionById(id, token);
+      const q = await adminApi.getQuestionById(id);
       setData(q as QuestionData);
       const opts = (q as QuestionData).options || [];
       setEditContent((q as QuestionData).content ?? '');
@@ -173,18 +173,18 @@ const QuestionPreviewPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [isAuthenticated, id]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleVerify = async () => {
-    if (!token || !id || !data) return;
+    if (!isAuthenticated || !id || !data) return;
     const newVerified = !data.verified;
     setUpdating(true);
     try {
-      await adminApi.verifyQuestion(id, newVerified, token);
+      await adminApi.verifyQuestion(id, newVerified);
       setData((prev) => (prev ? { ...prev, verified: newVerified } : null));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lỗi khi verify');
@@ -194,11 +194,11 @@ const QuestionPreviewPage: React.FC = () => {
   };
 
   const handleArchive = async () => {
-    if (!token || !id || !data) return;
+    if (!isAuthenticated || !id || !data) return;
     const newArchived = !data.archived;
     setUpdating(true);
     try {
-      await adminApi.archiveQuestion(id, newArchived, token);
+      await adminApi.archiveQuestion(id, newArchived);
       setData((prev) => (prev ? { ...prev, archived: newArchived } : null));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lỗi khi cập nhật');
@@ -208,7 +208,7 @@ const QuestionPreviewPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!token || !id) return;
+    if (!isAuthenticated || !id) return;
     setUpdating(true);
     try {
       const options =
@@ -216,17 +216,13 @@ const QuestionPreviewPage: React.FC = () => {
           ? editOptions.map((o) => ({ text: o.text.trim(), isCorrect: !!o.isCorrect })).filter((o) => o.text)
           : undefined;
       const correctAnswer = editOptions.length > 0 ? editOptions.find((o) => o.isCorrect)?.text ?? '' : editCorrectAnswer;
-      await adminApi.updateQuestion(
-        id,
-        {
-          content: editContent.trim(),
-          options: options && options.length > 0 ? options : undefined,
-          correctAnswer: correctAnswer.trim(),
-          difficulty: editDifficulty,
-          explanation: editExplanation.trim() || undefined,
-        },
-        token
-      );
+      await adminApi.updateQuestion(id, {
+        content: editContent.trim(),
+        options: options && options.length > 0 ? options : undefined,
+        correctAnswer: correctAnswer.trim(),
+        difficulty: editDifficulty,
+        explanation: editExplanation.trim() || undefined,
+      });
       setData((prev) =>
         prev
           ? {

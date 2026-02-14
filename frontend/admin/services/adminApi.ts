@@ -1,6 +1,12 @@
 import { User } from '../../types';
 
 const API_BASE_URL = process.env.API_BASE_URL || '';
+const credentials: RequestCredentials = 'include';
+
+let adminOnUnauthorized: (() => void) | null = null;
+export function setAdminOnUnauthorized(fn: () => void) {
+  adminOnUnauthorized = fn;
+}
 
 const parseJson = async (response: Response): Promise<any> => {
   const text = await response.text();
@@ -12,10 +18,33 @@ const parseJson = async (response: Response): Promise<any> => {
   }
 };
 
-export const adminApi = {
-  login: async (email: string, password: string): Promise<{ user: User; token: string }> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+async function fetchAdminAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  let res = await fetch(url, { ...options, credentials, headers: options.headers });
+  if (res.status === 401) {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
+      credentials,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!refreshRes.ok) {
+      adminOnUnauthorized?.();
+      throw new Error('Phiên đăng nhập hết hạn');
+    }
+    res = await fetch(url, { ...options, credentials, headers: options.headers });
+  }
+  if (res.status === 401) {
+    adminOnUnauthorized?.();
+    throw new Error('Phiên đăng nhập hết hạn');
+  }
+  return res;
+}
+
+export const adminApi = {
+  login: async (email: string, password: string): Promise<{ user: User }> => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      credentials,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.trim(), password }),
     });
@@ -45,18 +74,16 @@ export const adminApi = {
       throw new Error('Tài khoản này không phải ADMIN');
     }
 
-    const token = String(payload.token ?? rawUser.token ?? '');
-
-    if (!token) {
-      throw new Error('Token không hợp lệ từ server');
-    }
-
-    return { user, token };
+    return { user };
   },
 
-  getUser: async (id: string, token: string): Promise<User> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  logout: async (): Promise<void> => {
+    await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials });
+  },
+
+  getUser: async (id: string): Promise<User> => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/users/${id}`, {
+      headers: { 'Content-Type': 'application/json' },
     });
     const data = await parseJson(response);
     if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin user');
@@ -72,22 +99,19 @@ export const adminApi = {
   },
 
   /** Chi tiết đầy đủ user (cho trang preview admin): username, favorites, savedCollections, avatar, ... */
-  getFullUser: async (id: string, token: string): Promise<Record<string, any>> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  getFullUser: async (id: string): Promise<Record<string, any>> => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/users/${id}`, {
+      headers: { 'Content-Type': 'application/json' },
     });
     const data = await parseJson(response);
     if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin user');
     return (data?.data ?? data) as Record<string, any>;
   },
 
-  getAllUsers: async (token: string): Promise<User[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/users`, {
+  getAllUsers: async (): Promise<User[]> => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/users`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -104,19 +128,17 @@ export const adminApi = {
       id: String(u.id ?? u._id ?? ''),
       email: String(u.email ?? ''),
       fullName: String(u.username ?? u.email ?? ''),
+      avatar: u.avatar ?? null,
       role: u.role ?? 'USER',
       status: u.status,
       createdAt: u.createdAt,
     }));
   },
 
-  updateUserStatus: async (id: string, status: string, token: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/${id}/status`, {
+  updateUserStatus: async (id: string, status: string): Promise<void> => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/users/${id}/status`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
 
@@ -130,13 +152,10 @@ export const adminApi = {
     }
   },
 
-  getReports: async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/reports`, {
+  getReports: async () => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/reports`, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -151,13 +170,10 @@ export const adminApi = {
     return Array.isArray(data) ? data : data?.data ?? [];
   },
 
-  resolveReport: async (id: string, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/reports/${id}/resolve`, {
+  resolveReport: async (id: string) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/reports/${id}/resolve`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -172,13 +188,10 @@ export const adminApi = {
     return data?.data ?? data;
   },
 
-  dismissReport: async (id: string, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/reports/${id}/dismiss`, {
+  dismissReport: async (id: string) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/reports/${id}/dismiss`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -193,13 +206,10 @@ export const adminApi = {
     return data?.data ?? data;
   },
 
-  getContentStats: async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/stats`, {
+  getContentStats: async () => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/stats`, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -218,13 +228,10 @@ export const adminApi = {
     };
   },
 
-  getQuestionSets: async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/sets`, {
+  getQuestionSets: async () => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/sets`, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -239,13 +246,10 @@ export const adminApi = {
     return Array.isArray(data) ? data : data?.data ?? [];
   },
 
-  getQuestions: async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/questions`, {
+  getQuestions: async () => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/questions`, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -260,13 +264,10 @@ export const adminApi = {
     return Array.isArray(data) ? data : data?.data ?? [];
   },
 
-  getQuestionsBySet: async (setId: string, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/sets/${setId}/questions`, {
+  getQuestionsBySet: async (setId: string) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/sets/${setId}/questions`, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const data = await parseJson(response);
@@ -281,13 +282,10 @@ export const adminApi = {
     return Array.isArray(data) ? data : data?.data ?? [];
   },
 
-  verifyQuestionSet: async (id: string, verified: boolean, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/sets/${id}/verify`, {
+  verifyQuestionSet: async (id: string, verified: boolean) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/sets/${id}/verify`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ verified }),
     });
 
@@ -303,18 +301,18 @@ export const adminApi = {
     return data?.data ?? data;
   },
 
-  getSetById: async (setId: string, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/sets/${setId}`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  getSetById: async (setId: string) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/sets/${setId}`, {
+      headers: { 'Content-Type': 'application/json' },
     });
     const data = await parseJson(response);
     if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin bộ câu hỏi');
     return data?.data ?? data;
   },
 
-  getQuestionById: async (questionId: string, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/questions/${questionId}`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  getQuestionById: async (questionId: string) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/questions/${questionId}`, {
+      headers: { 'Content-Type': 'application/json' },
     });
     const data = await parseJson(response);
     if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải thông tin câu hỏi');
@@ -323,15 +321,11 @@ export const adminApi = {
 
   updateQuestion: async (
     id: string,
-    payload: { content?: string; options?: Array<{ text: string; isCorrect?: boolean }>; correctAnswer?: string; difficulty?: string; explanation?: string },
-    token: string
+    payload: { content?: string; options?: Array<{ text: string; isCorrect?: boolean }>; correctAnswer?: string; difficulty?: string; explanation?: string }
   ) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}`, {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/questions/${id}`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const data = await parseJson(response);
@@ -339,13 +333,10 @@ export const adminApi = {
     return data?.data ?? data;
   },
 
-  verifyQuestion: async (id: string, verified: boolean, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}/verify`, {
+  verifyQuestion: async (id: string, verified: boolean) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/questions/${id}/verify`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ verified }),
     });
     const data = await parseJson(response);
@@ -353,13 +344,10 @@ export const adminApi = {
     return data?.data ?? data;
   },
 
-  archiveQuestion: async (id: string, archived: boolean, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}/archive`, {
+  archiveQuestion: async (id: string, archived: boolean) => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/questions/${id}/archive`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived }),
     });
     const data = await parseJson(response);
@@ -367,13 +355,10 @@ export const adminApi = {
     return data?.data ?? data;
   },
 
-  reviewQuestion: async (id: string, action: 'GOOD' | 'HIDE', token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/content/questions/${id}/review`, {
+  reviewQuestion: async (id: string, action: 'GOOD' | 'HIDE') => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/content/questions/${id}/review`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     });
 

@@ -36,7 +36,7 @@ interface Question {
 }
 
 const ContentManagement: React.FC = () => {
-  const { token } = useAdminAuth();
+  const { isAuthenticated } = useAdminAuth();
   const [stats, setStats] = useState({ totalQuestions: 0, totalSets: 0, verifiedSets: 0 });
   const [questionSets, setQuestionSets] = useState<QuestionSet[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -53,7 +53,7 @@ const ContentManagement: React.FC = () => {
   const [setQuestionsError, setSetQuestionsError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Yêu cầu đăng nhập');
       setLoading(false);
       return;
@@ -62,9 +62,9 @@ const ContentManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       const [statsData, setsData, questionsData] = await Promise.all([
-        adminApi.getContentStats(token),
-        adminApi.getQuestionSets(token),
-        adminApi.getQuestions(token),
+        adminApi.getContentStats(),
+        adminApi.getQuestionSets(),
+        adminApi.getQuestions(),
       ]);
       setStats(statsData);
       setQuestionSets(Array.isArray(setsData) ? setsData : []);
@@ -74,7 +74,7 @@ const ContentManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchData();
@@ -86,11 +86,11 @@ const ContentManagement: React.FC = () => {
     setPreviewMode('set');
     setSuggestionText('');
 
-    if (!token) return;
+    if (!isAuthenticated) return;
     try {
       setSetQuestionsLoading(true);
       setSetQuestionsError(null);
-      const data = await adminApi.getQuestionsBySet(set.id, token);
+      const data = await adminApi.getQuestionsBySet(set.id);
       setSetQuestionsInSet(Array.isArray(data) ? data : []);
     } catch (err) {
       setSetQuestionsInSet([]);
@@ -119,7 +119,7 @@ const ContentManagement: React.FC = () => {
   };
 
   const toggleVerifySet = async (setId: string, value: boolean) => {
-    if (!token) {
+    if (!isAuthenticated) {
       alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       return;
     }
@@ -136,9 +136,9 @@ const ContentManagement: React.FC = () => {
     }
 
     try {
-      await adminApi.verifyQuestionSet(setId, value, token);
+      await adminApi.verifyQuestionSet(setId, value);
       // cập nhật lại stats verifySets đơn giản bằng fetch lại
-      const statsData = await adminApi.getContentStats(token);
+      const statsData = await adminApi.getContentStats();
       setStats(statsData);
     } catch (err) {
       // rollback nếu lỗi
@@ -517,12 +517,12 @@ const ContentManagement: React.FC = () => {
                             <button
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                               onClick={async () => {
-                                if (!token) {
+                                if (!isAuthenticated) {
                                   alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                                   return;
                                 }
                                 try {
-                                  await adminApi.reviewQuestion(q.id, 'GOOD', token);
+                                  await adminApi.reviewQuestion(q.id, 'GOOD');
                                   setSetQuestionsInSet((prev) =>
                                     prev.map((item) =>
                                       item.id === q.id ? { ...item, verified: true, archived: false } : item
@@ -543,12 +543,12 @@ const ContentManagement: React.FC = () => {
                             <button
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100"
                               onClick={async () => {
-                                if (!token) {
+                                if (!isAuthenticated) {
                                   alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                                   return;
                                 }
                                 try {
-                                  await adminApi.reviewQuestion(q.id, 'HIDE', token);
+                                  await adminApi.reviewQuestion(q.id, 'HIDE');
                                   setSetQuestionsInSet((prev) =>
                                     prev.map((item) =>
                                       item.id === q.id ? { ...item, archived: true } : item
@@ -612,12 +612,12 @@ const ContentManagement: React.FC = () => {
                     <button
                       className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                       onClick={async () => {
-                        if (!token || !selectedQuestion) {
+                        if (!isAuthenticated || !selectedQuestion) {
                           alert('Phiên đăng nhập đã hết hạn hoặc câu hỏi không hợp lệ.');
                           return;
                         }
                         try {
-                          await adminApi.reviewQuestion(selectedQuestion.id, 'GOOD', token);
+                          await adminApi.reviewQuestion(selectedQuestion.id, 'GOOD');
                           alert('Đã đánh dấu câu hỏi là tốt.');
                         } catch (err) {
                           alert(
@@ -634,12 +634,12 @@ const ContentManagement: React.FC = () => {
                     <button
                       className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100"
                       onClick={async () => {
-                        if (!token || !selectedQuestion) {
+                        if (!isAuthenticated || !selectedQuestion) {
                           alert('Phiên đăng nhập đã hết hạn hoặc câu hỏi không hợp lệ.');
                           return;
                         }
                         try {
-                          await adminApi.reviewQuestion(selectedQuestion.id, 'HIDE', token);
+                          await adminApi.reviewQuestion(selectedQuestion.id, 'HIDE');
                           alert('Đã ẩn / loại bỏ câu hỏi khỏi nội dung hiển thị.');
                         } catch (err) {
                           alert(

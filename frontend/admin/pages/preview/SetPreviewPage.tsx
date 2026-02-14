@@ -17,13 +17,13 @@ interface SetData {
 const SetPreviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { token } = useAdminAuth();
+  const { isAuthenticated } = useAdminAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SetData | null>(null);
 
   useEffect(() => {
-    if (!token || !id) {
+    if (!isAuthenticated || !id) {
       setLoading(false);
       return;
     }
@@ -32,8 +32,8 @@ const SetPreviewPage: React.FC = () => {
       setError(null);
       try {
         const [s, questions] = await Promise.all([
-          adminApi.getSetById(id, token),
-          adminApi.getQuestionsBySet(id, token),
+          adminApi.getSetById(id),
+          adminApi.getQuestionsBySet(id),
         ]);
         setData({ ...(s as SetData), questions: questions || [] });
       } catch (err) {
@@ -44,7 +44,7 @@ const SetPreviewPage: React.FC = () => {
       }
     };
     fetchData();
-  }, [token, id]);
+  }, [isAuthenticated, id]);
 
   if (loading) {
     return (

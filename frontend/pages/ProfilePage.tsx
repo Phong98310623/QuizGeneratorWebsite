@@ -54,7 +54,7 @@ const resizeImageToDataUrl = (file: File): Promise<string> => {
 };
 
 const ProfilePage: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user, login, isAuthenticated } = useAuth();
   const [username, setUsername] = useState(user?.fullName ?? '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -81,35 +81,32 @@ const ProfilePage: React.FC = () => {
   const [selectedQuestion, setSelectedQuestion] = useState<SavedQuestionDetail | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setHistoryLoading(false);
       return;
     }
-    attemptsApi.getMyHistory(token).then((data) => {
+    attemptsApi.getMyHistory(null as any).then((data) => {
       setHistory(data);
     }).catch(() => setHistory([])).finally(() => setHistoryLoading(false));
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setFavoritesLoading(false);
       return;
     }
-    userFavoritesApi.getWithDetails(token).then((data) => {
+    userFavoritesApi.getWithDetails(null as any).then((data) => {
       setFavoriteQuestions(data.favoriteQuestions || []);
       setSavedCollectionsWithQuestions(data.savedCollectionsWithQuestions || []);
     }).catch(() => {}).finally(() => setFavoritesLoading(false));
-  }, []);
+  }, [isAuthenticated]);
 
   const handleRemoveFromFavorite = async () => {
     if (!favoriteDeleteConfirm) return;
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
+    if (!isAuthenticated) return;
     setDeleteLoading(true);
     try {
-      await userFavoritesApi.toggleFavorite(token, favoriteDeleteConfirm.questionId);
+      await userFavoritesApi.toggleFavorite(null as any, favoriteDeleteConfirm.questionId);
       setFavoriteQuestions((prev) => prev.filter((q) => q.id !== favoriteDeleteConfirm.questionId));
       setFavoriteDeleteConfirm(null);
     } catch {
@@ -121,11 +118,10 @@ const ProfilePage: React.FC = () => {
 
   const handleRemoveFromCollection = async () => {
     if (!deleteConfirm) return;
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
+    if (!isAuthenticated) return;
     setDeleteLoading(true);
     try {
-      await userFavoritesApi.removeFromCollection(token, deleteConfirm.nameid, deleteConfirm.questionId);
+      await userFavoritesApi.removeFromCollection(null as any, deleteConfirm.nameid, deleteConfirm.questionId);
       setSavedCollectionsWithQuestions((prev) =>
         prev.map((col) =>
           col.nameid === deleteConfirm.nameid
@@ -146,16 +142,15 @@ const ProfilePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setMessage({ type: 'error', text: 'Phiên đăng nhập hết hạn. Vui lòng đăng xuất và đăng nhập lại.' });
       return;
     }
     setSaving(true);
     try {
-      const res = await authService.updateProfile(token, { username: username.trim() });
+      const res = await authService.updateProfile(null as any, { username: username.trim() });
       if (res.success && res.data) {
-        login(res.data, token);
+        login(res.data);
         setMessage({ type: 'success', text: 'Đã cập nhật thông tin.' });
       } else {
         setMessage({ type: 'error', text: res.error || 'Cập nhật thất bại.' });
@@ -174,8 +169,7 @@ const ProfilePage: React.FC = () => {
       setAvatarMessage({ type: 'error', text: 'Vui lòng chọn file ảnh (JPG, PNG, ...).' });
       return;
     }
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setAvatarMessage({ type: 'error', text: 'Phiên đăng nhập hết hạn.' });
       return;
     }
@@ -183,9 +177,9 @@ const ProfilePage: React.FC = () => {
     setAvatarSaving(true);
     try {
       const dataUrl = await resizeImageToDataUrl(file);
-      const res = await authService.updateProfile(token, { avatar: dataUrl });
+      const res = await authService.updateProfile(null as any, { avatar: dataUrl });
       if (res.success && res.data) {
-        login(res.data, token);
+        login(res.data);
         setAvatarMessage({ type: 'success', text: 'Đã cập nhật avatar.' });
       } else {
         setAvatarMessage({ type: 'error', text: res.error || 'Cập nhật thất bại.' });
@@ -198,14 +192,13 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleRemoveAvatar = async () => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
+    if (!isAuthenticated) return;
     setAvatarMessage(null);
     setAvatarSaving(true);
     try {
-      const res = await authService.updateProfile(token, { avatar: null });
+      const res = await authService.updateProfile(null as any, { avatar: null });
       if (res.success && res.data) {
-        login(res.data, token);
+        login(res.data);
         setAvatarMessage({ type: 'success', text: 'Đã xóa avatar.' });
       }
     } catch {
@@ -226,14 +219,13 @@ const ProfilePage: React.FC = () => {
       setPasswordMessage({ type: 'error', text: 'Mật khẩu mới và xác nhận không trùng.' });
       return;
     }
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setPasswordMessage({ type: 'error', text: 'Phiên đăng nhập hết hạn. Vui lòng đăng xuất và đăng nhập lại.' });
       return;
     }
     setPasswordSaving(true);
     try {
-      const res = await authService.changePassword(token, {
+      const res = await authService.changePassword(null as any, {
         currentPassword,
         newPassword,
       });

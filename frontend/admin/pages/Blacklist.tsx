@@ -5,7 +5,7 @@ import { adminApi } from '../services/adminApi';
 import { User } from '../../types';
 
 const Blacklist: React.FC = () => {
-  const { token } = useAdminAuth();
+  const { isAuthenticated } = useAdminAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -14,7 +14,7 @@ const Blacklist: React.FC = () => {
 
   useEffect(() => {
     const fetchBlacklistedUsers = async () => {
-      if (!token) {
+      if (!isAuthenticated) {
         setError('Authentication required');
         setLoading(false);
         return;
@@ -24,7 +24,7 @@ const Blacklist: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const allUsers = await adminApi.getAllUsers(token);
+        const allUsers = await adminApi.getAllUsers();
         const blocked = allUsers.filter((u) => u.status === 'BANNED');
         setUsers(blocked);
       } catch (err) {
@@ -36,16 +36,16 @@ const Blacklist: React.FC = () => {
     };
 
     fetchBlacklistedUsers();
-  }, [token]);
+  }, [isAuthenticated]);
 
   const restoreAccess = async (id: string) => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return;
     }
 
     try {
-      await adminApi.updateUserStatus(id, 'ACTIVE', token);
+      await adminApi.updateUserStatus(id, 'ACTIVE');
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while restoring access');

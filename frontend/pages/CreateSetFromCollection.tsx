@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { userFavoritesApi, setsApi, SavedCollectionWithQuestions, SavedQuestionDetail } from '../services/api';
 import { Input } from '../components/quiz/Input';
 
 const CreateSetFromCollection: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [collections, setCollections] = useState<SavedCollectionWithQuestions[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -14,17 +16,16 @@ const CreateSetFromCollection: React.FC = () => {
   const [savedPin, setSavedPin] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setLoading(false);
       return;
     }
     userFavoritesApi
-      .getWithDetails(token)
+      .getWithDetails(null as any)
       .then((data) => setCollections(data.savedCollectionsWithQuestions || []))
       .catch(() => setCollections([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAuthenticated]);
 
   const toggleQuestion = (id: string) => {
     setSelectedIds((prev) => {
@@ -71,15 +72,14 @@ const CreateSetFromCollection: React.FC = () => {
       return;
     }
 
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Bạn cần đăng nhập.');
       return;
     }
 
     setSaving(true);
     try {
-      const result = await setsApi.create(token, {
+      const result = await setsApi.create(null as any, {
         title: title.trim(),
         description: description.trim() || undefined,
         type: 'custom',

@@ -4,6 +4,7 @@ import { Shield, ShieldCheck, Ban, CheckCircle, Search, Filter, Loader2, AlertCi
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { adminApi } from '../services/adminApi';
 import { User } from '../../types';
+import { stringToSafeColor } from '../../utils/avatar';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -14,13 +15,13 @@ const UserManagement: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const { token } = useAdminAuth();
+  const { isAuthenticated } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!token) {
+      if (!isAuthenticated) {
         setError('Authentication required');
         setLoading(false);
         return;
@@ -29,7 +30,7 @@ const UserManagement: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const list = await adminApi.getAllUsers(token);
+        const list = await adminApi.getAllUsers();
         setUsers(list);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred while fetching users');
@@ -40,7 +41,7 @@ const UserManagement: React.FC = () => {
     };
 
     fetchUsers();
-  }, [token]);
+  }, [isAuthenticated]);
 
   const handleBlockClick = (user: User) => {
     if (user.status === 'ACTIVE') {
@@ -53,14 +54,14 @@ const UserManagement: React.FC = () => {
   };
 
   const toggleStatus = async (id: string, newStatus: string, reason: string = '') => {
-    if (!token) {
-      setError('Authentication required');
+      if (!isAuthenticated) {
+        setError('Authentication required');
       return;
     }
 
     setIsUpdating(true);
     try {
-      await adminApi.updateUserStatus(id, newStatus, token);
+      await adminApi.updateUserStatus(id, newStatus);
       setUsers((prev) =>
         prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u)),
       );
@@ -163,9 +164,20 @@ const UserManagement: React.FC = () => {
                           }}
                           className="flex items-center gap-3 w-full text-left hover:opacity-90 transition-opacity"
                         >
-                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
-                            {user.fullName.charAt(0).toUpperCase()}
-                          </div>
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar}
+                              alt=""
+                              className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                            />
+                          ) : (
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white"
+                              style={{ backgroundColor: stringToSafeColor(user.email) }}
+                            >
+                              {(user.fullName || user.email).charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           <div>
                             <p className="font-bold text-slate-900">{user.fullName}</p>
                             <p className="text-xs text-slate-500">{user.email}</p>

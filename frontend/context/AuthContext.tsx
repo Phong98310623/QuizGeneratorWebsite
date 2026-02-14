@@ -1,10 +1,12 @@
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, AuthState } from '../types';
+import { setAuthCallbacks, setAuthUserCookie, getAuthUserCookie, clearAuthUserCookie } from '../services/api';
+import { authService } from '../services/api';
 
 interface AuthContextType extends AuthState {
-  login: (user: User, token: string) => void;
+  login: (user: User, _accessToken?: string, _refreshToken?: string) => void;
   logout: () => void;
+  setTokens?: (accessToken: string, refreshToken: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,13 +18,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading: true,
   });
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem('auth_user');
-    const token = localStorage.getItem('auth_token');
+  const logout = useCallback(() => {
+    authService.logout();
+    clearAuthUserCookie();
+    setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+  }, []);
 
-    if (savedUser && token) {
+  useEffect(() => {
+    const savedUser = getAuthUserCookie();
+    if (savedUser) {
       setState({
-        user: JSON.parse(savedUser),
+        user: savedUser,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -31,22 +41,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const login = (user: User, token: string) => {
-    localStorage.setItem('auth_user', JSON.stringify(user));
-    localStorage.setItem('auth_token', token);
+  useEffect(() => {
+    setAuthCallbacks({ onUnauthorized: logout });
+  }, [logout]);
+
+  const login = (user: User, _accessToken?: string, _refreshToken?: string) => {
+    setAuthUserCookie(user);
     setState({
       user,
       isAuthenticated: true,
-      isLoading: false,
-    });
-  };
-
-  const logout = () => {
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_token');
-    setState({
-      user: null,
-      isAuthenticated: false,
       isLoading: false,
     });
   };

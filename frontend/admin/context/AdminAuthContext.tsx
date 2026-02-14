@@ -1,12 +1,38 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User } from '../../types';
+import { setAdminOnUnauthorized, adminApi } from '../services/adminApi';
+
+const ADMIN_USER_COOKIE = 'admin_auth_user';
+const COOKIE_MAX_AGE_DAYS = 7;
+
+function getAdminUserCookie(): User | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + ADMIN_USER_COOKIE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+  if (!match) return null;
+  try {
+    return JSON.parse(decodeURIComponent(match[1])) as User;
+  } catch {
+    return null;
+  }
+}
+
+function setAdminUserCookie(user: User): void {
+  if (typeof document === 'undefined') return;
+  const maxAge = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
+  document.cookie = `${ADMIN_USER_COOKIE}=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function clearAdminUserCookie(): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${ADMIN_USER_COOKIE}=; path=/; max-age=0`;
+}
 
 interface AdminAuthContextType {
   user: User | null;
-  token: string | null;
+  token: null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (user: User, token: string) => void;
+  login: (user: User) => void;
   logout: () => void;
 }
 
@@ -14,43 +40,35 @@ const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefin
 
 export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('admin_auth_user');
-    const storedToken = localStorage.getItem('admin_auth_token');
+  const logout = useCallback(() => {
+    adminApi.logout();
+    clearAdminUserCookie();
+    setUser(null);
+  }, []);
 
-    if (storedUser && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
-      } catch {
-        localStorage.removeItem('admin_auth_user');
-        localStorage.removeItem('admin_auth_token');
-      }
+  useEffect(() => {
+    const stored = getAdminUserCookie();
+    if (stored && stored.role === 'ADMIN') {
+      setUser(stored);
     }
     setIsLoading(false);
   }, []);
 
-  const login = (userData: User, jwt: string) => {
-    setUser(userData);
-    setToken(jwt);
-    localStorage.setItem('admin_auth_user', JSON.stringify(userData));
-    localStorage.setItem('admin_auth_token', jwt);
-  };
+  useEffect(() => {
+    setAdminOnUnauthorized(logout);
+  }, [logout]);
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('admin_auth_user');
-    localStorage.removeItem('admin_auth_token');
+  const login = (userData: User) => {
+    setAdminUserCookie(userData);
+    setUser(userData);
   };
 
   const value: AdminAuthContextType = {
     user,
-    token,
-    isAuthenticated: !!user && !!token && user.role === 'ADMIN',
+    token: null,
+    isAuthenticated: !!user && user.role === 'ADMIN',
     isLoading,
     login,
     logout,

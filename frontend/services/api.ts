@@ -2,6 +2,76 @@ import { User, ApiResponse } from '../types';
 
 const API_BASE_URL = process.env.API_BASE_URL || "";
 
+const AUTH_USER_COOKIE = "auth_user";
+const COOKIE_MAX_AGE_DAYS = 30;
+
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+export function getAuthUserCookie(): User | null {
+  const raw = getCookie(AUTH_USER_COOKIE);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthUserCookie(user: User): void {
+  if (typeof document === "undefined") return;
+  const maxAge = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
+  document.cookie = `${AUTH_USER_COOKIE}=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+export function clearAuthUserCookie(): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${AUTH_USER_COOKIE}=; path=/; max-age=0`;
+}
+
+/** Giữ cho tương thích khi backend vẫn trả token trong body (đọc được từ cookie). */
+export function getStoredAccessToken(): string | null {
+  return null;
+}
+export function getStoredRefreshToken(): string | null {
+  return null;
+}
+export function setStoredTokens(_access: string, _refresh: string) {
+  /* tokens lưu HttpOnly cookie, không lưu frontend */
+}
+
+let onUnauthorized: (() => void) | null = null;
+export function setAuthCallbacks(cbs: { onUnauthorized: () => void; onTokensRefreshed?: (access: string, refresh: string) => void }) {
+  onUnauthorized = cbs.onUnauthorized;
+}
+
+const defaultCredentials: RequestCredentials = "include";
+
+/** Gọi API với cookie (credentials: include); 401 thì thử refresh (cookie) rồi gửi lại. */
+async function fetchWithAuth(url: string, options: RequestInit, _token?: string | null): Promise<Response> {
+  let res = await fetch(url, {
+    ...options,
+    credentials: defaultCredentials,
+    headers: options?.headers,
+  });
+  if (res.status !== 401) return res;
+
+  const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    method: "POST",
+    credentials: defaultCredentials,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  if (!refreshRes.ok) {
+    onUnauthorized?.();
+    return res;
+  }
+  return fetch(url, { ...options, credentials: defaultCredentials, headers: options?.headers });
+}
+
 /** Map backend user response to frontend User */
 const mapBackendUser = (data: Record<string, unknown>): User => ({
   id: String(data.id ?? data._id ?? ''),
@@ -39,6 +109,7 @@ const parseError = (data: unknown): string => {
   if (data && typeof data === 'object') {
     const obj = data as Record<string, unknown>;
     if (obj.detail) return String(obj.detail);
+    if (obj.message) return String(obj.message);
     const messages: string[] = [];
     for (const [, val] of Object.entries(obj)) {
       if (Array.isArray(val)) messages.push(...val.map(String));
@@ -53,8 +124,9 @@ export const authService = {
   register: async (fullName: string, email: string, password: string): Promise<ApiResponse<User>> => {
     try {
       const username = email;
-      const response = await fetch(`${API_BASE_URL}/api/auth/register/`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
       });
@@ -74,10 +146,11 @@ export const authService = {
     }
   },
 
-  login: async (email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> => {
+  login: async (email: string, password: string): Promise<ApiResponse<{ user: User; token: string; accessToken: string; refreshToken: string }>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       });
@@ -91,9 +164,10 @@ export const authService = {
       const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
       const rawUser = (payload.data ?? payload.user ?? payload) as Record<string, unknown>;
       const user = mapBackendUser(rawUser);
-      const token = String(payload.access ?? payload.token ?? rawUser.token ?? '');
+      const accessToken = String((rawUser as any).accessToken ?? payload.access ?? payload.accessToken ?? '');
+      const refreshToken = String((rawUser as any).refreshToken ?? payload.refreshToken ?? '');
 
-      return { success: true, data: { user, token } };
+      return { success: true, data: { user, token: accessToken, accessToken, refreshToken } };
     } catch (err) {
       return {
         success: false,
@@ -103,19 +177,20 @@ export const authService = {
   },
 
   logout: async (): Promise<void> => {
-    // JWT không cần gọi API logout - token sẽ hết hạn
+    await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
   },
 
   updateProfile: async (token: string, data: { username?: string; avatar?: string | null }): Promise<ApiResponse<User>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/auth/me`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
         },
-        body: JSON.stringify(data),
-      });
+        token
+      );
       const result = await parseResponse(response);
       if (!response.ok) {
         return { success: false, error: parseError(result) };
@@ -135,14 +210,15 @@ export const authService = {
     data: { currentPassword: string; newPassword: string }
   ): Promise<ApiResponse<null>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/me/password`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/auth/me/password`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
         },
-        body: JSON.stringify(data),
-      });
+        token
+      );
       const result = await parseResponse(response);
       if (!response.ok) {
         return { success: false, error: parseError(result) };
@@ -183,7 +259,7 @@ export const publicApi = {
     if (params?.limit != null) sp.set('limit', String(params.limit));
     if (params?.offset != null) sp.set('offset', String(params.offset));
     const url = `${API_BASE_URL}/api/public/sets${sp.toString() ? `?${sp}` : ''}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { credentials: 'include' });
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi tải danh sách');
     return data as { data: QuestionSetMeta[]; total: number };
@@ -191,7 +267,7 @@ export const publicApi = {
 
   getSetByPin: async (pin: string) => {
     const normalized = String(pin).trim().toUpperCase();
-    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}`);
+    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}`, { credentials: 'include' });
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Mã PIN không đúng hoặc bộ câu hỏi không tồn tại');
     return (data as { data: QuestionSetMeta }).data;
@@ -199,7 +275,7 @@ export const publicApi = {
 
   getQuestionsByPin: async (pin: string) => {
     const normalized = String(pin).trim().toUpperCase();
-    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}/questions`);
+    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}/questions`, { credentials: 'include' });
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi tải câu hỏi');
     return (data as { data: PlayQuestion[] }).data;
@@ -227,23 +303,26 @@ export interface AttemptHistoryItem {
 export const attemptsApi = {
   submit: async (token: string, pin: string, answers: Array<{ questionId: string; selectedAnswer: string }>) => {
     const normalized = String(pin).trim().toUpperCase();
-    const response = await fetch(`${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}/submit`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/public/sets/by-pin/${encodeURIComponent(normalized)}/submit`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers }),
       },
-      body: JSON.stringify({ answers }),
-    });
+      token
+    );
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi lưu kết quả');
     return data as { success: boolean; data: { attemptId: string; pin: string; completedAt: string } };
   },
 
   getMyHistory: async (token: string): Promise<AttemptHistoryItem[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/me/history`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/users/me/history`,
+      { headers: {} },
+      token
+    );
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tải lịch sử');
     return (data as { success: boolean; data: AttemptHistoryItem[] }).data;
@@ -274,14 +353,15 @@ export interface AiGenerateResult {
 
 export const aiApi = {
   generate: async (token: string, payload: AiGeneratePayload): Promise<AiGenerateResult> => {
-    const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/ai/generate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+      token
+    );
     const json = await response.json();
     if (!response.ok) throw new Error((json as { message?: string }).message || 'Lỗi khi tạo câu hỏi bằng AI');
     const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null };
@@ -326,6 +406,7 @@ export const reportApi = {
   create: async (payload: CreateReportPayload): Promise<{ success: boolean; data?: { id: string; status: string } }> => {
     const response = await fetch(`${API_BASE_URL}/api/reports`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
@@ -368,74 +449,74 @@ export interface FavoritesAndCollectionsWithDetails extends FavoritesAndCollecti
 
 export const userFavoritesApi = {
   get: async (token: string): Promise<FavoritesAndCollectionsData> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/me/favorites`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/users/me/favorites`, { headers: {} }, token);
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tải dữ liệu');
     return (data as { success: boolean; data: FavoritesAndCollectionsData }).data;
   },
 
   getWithDetails: async (token: string): Promise<FavoritesAndCollectionsWithDetails> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/me/favorites?details=1`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/users/me/favorites?details=1`, { headers: {} }, token);
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tải dữ liệu');
     return (data as { success: boolean; data: FavoritesAndCollectionsWithDetails }).data;
   },
 
   toggleFavorite: async (token: string, questionId: string): Promise<{ favorites: string[]; added: boolean }> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/me/favorites/toggle`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/users/me/favorites/toggle`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId }),
       },
-      body: JSON.stringify({ questionId }),
-    });
+      token
+    );
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi cập nhật');
     return (data as { success: boolean; data: { favorites: string[]; added: boolean } }).data;
   },
 
   createCollection: async (token: string, name: string): Promise<SavedCollection> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/me/saved-collections`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/users/me/saved-collections`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
       },
-      body: JSON.stringify({ name }),
-    });
+      token
+    );
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi tạo bộ sưu tập');
     return (data as { success: boolean; data: SavedCollection }).data;
   },
 
   addToCollection: async (token: string, nameid: string, questionId: string): Promise<SavedCollection> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/me/saved-collections/${encodeURIComponent(nameid)}/add`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/users/me/saved-collections/${encodeURIComponent(nameid)}/add`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId }),
       },
-      body: JSON.stringify({ questionId }),
-    });
+      token
+    );
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi thêm câu hỏi');
     return (data as { success: boolean; data: SavedCollection }).data;
   },
 
   removeFromCollection: async (token: string, nameid: string, questionId: string): Promise<SavedCollection> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/me/saved-collections/${encodeURIComponent(nameid)}/remove`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/users/me/saved-collections/${encodeURIComponent(nameid)}/remove`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId }),
       },
-      body: JSON.stringify({ questionId }),
-    });
+      token
+    );
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi xóa câu hỏi');
     return (data as { success: boolean; data: SavedCollection }).data;
@@ -444,14 +525,15 @@ export const userFavoritesApi = {
 
 export const setsApi = {
   create: async (token: string, payload: CreateSetPayload) => {
-    const response = await fetch(`${API_BASE_URL}/api/sets`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/sets`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+      token
+    );
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi lưu bộ câu hỏi');
     return (data as { data: QuestionSetMeta }).data;

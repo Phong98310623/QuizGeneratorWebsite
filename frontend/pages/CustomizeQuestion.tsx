@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { setsApi, publicApi, userFavoritesApi } from '../services/api';
 
 const PERSONAL_COLLECTION_NAME = 'câu hỏi cá nhân';
@@ -13,6 +14,7 @@ interface OptionItem {
 }
 
 const CustomizeQuestion: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
@@ -75,8 +77,7 @@ const CustomizeQuestion: React.FC = () => {
       return;
     }
 
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Bạn cần đăng nhập để tạo câu hỏi.');
       return;
     }
@@ -84,7 +85,7 @@ const CustomizeQuestion: React.FC = () => {
     setSaving(true);
     try {
       const correctAnswer = validOptions.find((o) => o.isCorrect)!.text.trim();
-      const result = await setsApi.create(token, {
+      const result = await setsApi.create(null as any, {
         title: title.trim(),
         description: description.trim() || undefined,
         type: 'custom',
@@ -103,14 +104,14 @@ const CustomizeQuestion: React.FC = () => {
       if (result.pin) {
         try {
           const questions = await publicApi.getQuestionsByPin(result.pin);
-          const favData = await userFavoritesApi.get(token);
+          const favData = await userFavoritesApi.get(null as any);
           let col = favData.savedCollections.find((c) => c.name === PERSONAL_COLLECTION_NAME);
           if (!col) {
-            const created = await userFavoritesApi.createCollection(token, PERSONAL_COLLECTION_NAME);
+            const created = await userFavoritesApi.createCollection(null as any, PERSONAL_COLLECTION_NAME);
             col = created;
           }
           for (const q of questions) {
-            await userFavoritesApi.addToCollection(token, col!.nameid, q.id);
+            await userFavoritesApi.addToCollection(null as any, col!.nameid, q.id);
           }
         } catch {
           // Lưu collection thất bại, không chặn flow chính

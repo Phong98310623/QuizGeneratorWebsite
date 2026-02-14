@@ -1,13 +1,13 @@
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 
-// // Cho phép frontend (Vite dev server) gọi API từ origin khác (CORS)
-// app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+app.use(cors({ origin: corsOrigin, credentials: true }));
 
-// Cho phép nhúng iframe từ cùng domain (frontend 3000, backend 5000)
 app.use((req, res, next) => {
   const baseUrl = process.env.BASE_URL || "http://localhost";
   const origins = process.env.FRAME_ANCESTORS || `'self' ${baseUrl}:3000 ${baseUrl}:3000`;
@@ -17,6 +17,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 
 /**

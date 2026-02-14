@@ -62,7 +62,7 @@ const formatDate = (d?: string | { $date?: string }) => {
 const UserPreviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { token } = useAdminAuth();
+  const { isAuthenticated } = useAdminAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<FullUserData | null>(null);
@@ -75,11 +75,11 @@ const UserPreviewPage: React.FC = () => {
   const [iframeQuestionId, setIframeQuestionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!token || !id) return;
+    if (!isAuthenticated || !id) return;
     try {
       setLoading(true);
       setError(null);
-      const raw = await adminApi.getFullUser(id, token);
+      const raw = await adminApi.getFullUser(id);
       setData({
         ...raw,
         id: String(raw.id ?? raw._id ?? id),
@@ -90,14 +90,14 @@ const UserPreviewPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [isAuthenticated, id]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   useEffect(() => {
-    if (!token || !data?.favorites || !Array.isArray(data.favorites) || data.favorites.length === 0) {
+    if (!isAuthenticated || !data?.favorites || !Array.isArray(data.favorites) || data.favorites.length === 0) {
       setFavoriteQuestions([]);
       setFavoritesLoading(false);
       return;
@@ -106,7 +106,7 @@ const UserPreviewPage: React.FC = () => {
     setFavoritesLoading(true);
     Promise.all(
       ids.map((questionId) =>
-        adminApi.getQuestionById(questionId, token).then(
+        adminApi.getQuestionById(questionId).then(
           (q: Record<string, unknown>) =>
             ({
               id: String(q.id ?? q._id ?? questionId),
@@ -121,10 +121,10 @@ const UserPreviewPage: React.FC = () => {
     )
       .then(setFavoriteQuestions)
       .finally(() => setFavoritesLoading(false));
-  }, [token, data?.favorites]);
+  }, [isAuthenticated, data?.favorites]);
 
   useEffect(() => {
-    if (!token || !data?.savedCollections || !Array.isArray(data.savedCollections) || data.savedCollections.length === 0) {
+    if (!isAuthenticated || !data?.savedCollections || !Array.isArray(data.savedCollections) || data.savedCollections.length === 0) {
       setSavedCollectionsWithQuestions([]);
       setCollectionsLoading(false);
       return;
@@ -139,7 +139,7 @@ const UserPreviewPage: React.FC = () => {
             ? Promise.resolve([] as FavoriteQuestionDetail[])
             : Promise.all(
                 ids.map((questionId) =>
-                  adminApi.getQuestionById(questionId, token).then(
+                  adminApi.getQuestionById(questionId).then(
                     (q: Record<string, unknown>) =>
                       ({
                         id: String(q.id ?? q._id ?? questionId),
@@ -160,14 +160,14 @@ const UserPreviewPage: React.FC = () => {
     )
       .then(setSavedCollectionsWithQuestions)
       .finally(() => setCollectionsLoading(false));
-  }, [token, data?.savedCollections]);
+  }, [isAuthenticated, data?.savedCollections]);
 
   const handleUpdateStatus = async () => {
-    if (!token || !id || !data) return;
+    if (!isAuthenticated || !id || !data) return;
     const newStatus = data.status === 'BANNED' ? 'ACTIVE' : 'BANNED';
     setUpdating(true);
     try {
-      await adminApi.updateUserStatus(id, newStatus, token);
+      await adminApi.updateUserStatus(id, newStatus);
       setData((prev) => (prev ? { ...prev, status: newStatus } : null));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái');

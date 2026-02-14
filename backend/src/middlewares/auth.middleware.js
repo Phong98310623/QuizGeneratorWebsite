@@ -2,32 +2,32 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 
 const protect = async (req, res, next) => {
-    let token;
+    let token =
+        req.cookies?.auth_token ||
+        (req.headers.authorization && req.headers.authorization.startsWith('Bearer')
+            ? req.headers.authorization.split(' ')[1]
+            : null);
 
-    if (
-        req.headers.authorization &&
-        req.headers.authorization.startsWith('Bearer')
-    ) {
+    if (token) {
         try {
-            // Lấy token từ header "Bearer <token>"
-            token = req.headers.authorization.split(' ')[1];
-
-            // Giải mã token
             const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-
-            // Tìm user từ token và gán vào req (loại bỏ password)
             req.user = await User.findById(decoded.id).select('-password');
 
-            next();
+            if (!req.user) {
+                return res.status(401).json({ success: false, message: 'Tài khoản không tồn tại' });
+            }
+            if (req.user.status !== 'ACTIVE') {
+                return res.status(403).json({ success: false, message: 'Tài khoản đã bị khóa hoặc vô hiệu hóa' });
+            }
+
+            return next();
         } catch (error) {
             console.error(error);
-            res.status(401).json({ success: false, message: 'Token không hợp lệ' });
+            return res.status(401).json({ success: false, message: 'Token không hợp lệ' });
         }
     }
 
-    if (!token) {
-        res.status(401).json({ success: false, message: 'Không có token, từ chối truy cập' });
-    }
+    return res.status(401).json({ success: false, message: 'Không có token, từ chối truy cập' });
 };
 
 const requireAdmin = (req, res, next) => {
