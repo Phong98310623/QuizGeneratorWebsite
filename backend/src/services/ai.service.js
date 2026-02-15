@@ -152,6 +152,153 @@ async function generateQuestions(params) {
   return { data, fromCache: false };
 }
 
+/**
+ * Extract text từ file buffer (PDF hoặc text)
+ * @param {Buffer} fileBuffer - Buffer của file
+ * @param {string} fileExt - File extension (.pdf, .txt, .md)
+ * @returns {Promise<string>} Nội dung text
+ */
+async function extractFileContent(fileBuffer, fileExt) {
+  if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
+    throw new Error('File buffer không hợp lệ.');
+  }
+
+  const ext = (fileExt || '').toLowerCase();
+
+  // Handle PDF - currently not supported due to Node.js version constraints
+  if (ext === '.pdf' || ext === 'pdf') {
+    throw new Error(
+      'Tính năng PDF chưa được hỗ trợ trong phiên bản này. Vui lòng sử dụng file .txt hoặc .md để tạo câu hỏi từ file. Bạn có thể chuyển đổi PDF thành văn bản bằng các công cụ trực tuyến miễn phí.'
+    );
+  }
+
+  // Handle text files
+  try {
+    const text = fileBuffer.toString('utf-8');
+    if (!text.trim()) {
+      throw new Error('File trống hoặc không phải text file.');
+    }
+    return text;
+  } catch (err) {
+    throw new Error(`Lỗi khi đọc file: ${err.message}`);
+  }
+}
+
+/**
+ * Tạo prompt từ nội dung file
+ */
+function buildPromptFromFile(fileContent, numCount, difficultyStr, typeStr) {
+  // Giới hạn nội dung file để tránh token quá nhiều
+  const maxLength = 5000;
+  const truncatedContent = fileContent.length > maxLength 
+    ? fileContent.substring(0, maxLength) + '...' 
+    : fileContent;
+
+  return `
+    Hãy đóng vai một chuyên gia giáo dục.
+    Nhiệm vụ: Dựa trên nội dung được cung cấp dưới đây, hãy tạo ra ${numCount} câu hỏi.
+    Độ khó: ${difficultyStr}.
+    Loại câu hỏi: ${typeStr}.
+    Ngôn ngữ: Tiếng Việt.
+
+    Nội dung tham khảo:
+    """
+    ${truncatedContent}
+    """
+
+    Yêu cầu bổ sung:
+    - Nếu là Trắc nghiệm (Multiple Choice), hãy cung cấp 4 lựa chọn trong mảng 'options'.
+    - Nếu là Đúng/Sai (True/False), hãy cung cấp 2 lựa chọn "Đúng" và "Sai" trong mảng 'options'.
+    - Nếu là Tự luận ngắn (Short Answer), hãy để mảng 'options' rỗng.
+    - Câu hỏi phải liên quan trực tiếp đến nội dung cung cấp.
+    - Đảm bảo câu hỏi rõ ràng, chính xác và mang tính giáo dục.
+    Trả về đúng một mảng JSON, mỗi phần tử có: question, options (mảng), correctAnswer, explanation.
+  `;
+}
+
+/**
+ * Gọi Gemini API để tạo câu hỏi từ nội dung file
+ */
+async function callGeminiGenerateFromFile(apiKey, fileContent, numCount, difficultyStr, typeStr) {
+  const modelId = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const url = `${GENERATIVE_LANGUAGE_URL}/models/${modelId}:generateContent?key=${apiKey}`;
+  const prompt = buildPromptFromFile(fileContent, numCount, difficultyStr, typeStr);
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.7,
+      responseMimeType: 'application/json',
+      responseSchema,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errMessage =
+      (data.error && (data.error.message || data.error.status)) || `Gemini API lỗi: ${response.status}`;
+    const err = new Error(errMessage);
+    err.statusCode = response.status >= 500 ? 502 : 400;
+    throw err;
+  }
+
+  const text =
+    data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    const err = new Error('Không nhận được nội dung từ Gemini.');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  const parsed = JSON.parse(text);
+  const list = Array.isArray(parsed) ? parsed : [parsed];
+  return list.map((q) => ({
+    question: q.question != null ? String(q.question) : '',
+    options: Array.isArray(q.options) ? q.options.map((o) => String(o)) : [],
+    correctAnswer: q.correctAnswer != null ? String(q.correctAnswer) : '',
+    explanation: q.explanation != null ? String(q.explanation) : '',
+  }));
+}
+
+/**
+ * Sinh câu hỏi từ nội dung file
+ * @param {string} fileContent - Nội dung file (text)
+ * @param {number} count - Số lượng câu hỏi
+ * @param {string} difficulty - Độ khó
+ * @param {string} type - Loại câu hỏi
+ * @param {string} title - Tiêu đề bộ câu hỏi
+ * @returns { data, fromCache?: false }
+ */
+async function generateQuestionsFromFile(fileContent, count, difficulty, type, title) {
+  if (!fileContent || typeof fileContent !== 'string' || !fileContent.trim()) {
+    const err = new Error('Nội dung file trống hoặc không hợp lệ.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const numCount = Math.min(10, Math.max(1, parseInt(count, 10) || 5));
+  const difficultyStr = difficulty && String(difficulty).trim() ? String(difficulty).trim() : 'Trung bình';
+  const typeStr = type && String(type).trim() ? String(type).trim() : 'Trắc nghiệm';
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || !apiKey.trim()) {
+    const err = new Error('Chưa cấu hình GEMINI_API_KEY trên server. Không thể tạo câu hỏi bằng AI.');
+    err.statusCode = 503;
+    throw err;
+  }
+
+  const data = await callGeminiGenerateFromFile(apiKey, fileContent, numCount, difficultyStr, typeStr);
+  return { data, fromCache: false };
+}
+
 module.exports = {
   generateQuestions,
+  generateQuestionsFromFile,
+  extractFileContent,
 };

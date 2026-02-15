@@ -280,6 +280,20 @@ export const publicApi = {
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi tải câu hỏi');
     return (data as { data: PlayQuestion[] }).data;
   },
+
+  listQuestions: async (params?: { q?: string; tags?: string; difficulty?: string; limit?: number; offset?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.q) sp.set('q', params.q);
+    if (params?.tags) sp.set('tags', params.tags);
+    if (params?.difficulty) sp.set('difficulty', params.difficulty);
+    if (params?.limit != null) sp.set('limit', String(params.limit));
+    if (params?.offset != null) sp.set('offset', String(params.offset));
+    const url = `${API_BASE_URL}/api/public/questions${sp.toString() ? `?${sp}` : ''}`;
+    const response = await fetch(url, { credentials: 'include' });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi tải câu hỏi');
+    return data as { data: PlayQuestion[]; total: number };
+  },
 };
 
 export interface AttemptHistoryDetail {
@@ -364,6 +378,25 @@ export const aiApi = {
     );
     const json = await response.json();
     if (!response.ok) throw new Error((json as { message?: string }).message || 'Lỗi khi tạo câu hỏi bằng AI');
+    const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null };
+    return {
+      data: body.data,
+      fromCache: body.fromCache,
+      existingPin: body.existingPin ?? null,
+    };
+  },
+
+  generateFromFile: async (token: string, formData: FormData): Promise<AiGenerateResult> => {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/ai/generate-from-file`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+      token
+    );
+    const json = await response.json();
+    if (!response.ok) throw new Error((json as { message?: string }).message || 'Lỗi khi tạo câu hỏi từ file');
     const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null };
     return {
       data: body.data,
