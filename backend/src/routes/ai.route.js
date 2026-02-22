@@ -16,15 +16,17 @@ const upload = multer({
       'application/txt',
       'application/pdf',
       'text/markdown',
-      'text/x-markdown'
+      'text/x-markdown',
+      'image/png',
+      'image/jpeg'
     ];
-    const allowedExt = ['.txt', '.md', '.text', '.pdf'];
+    const allowedExt = ['.txt', '.md', '.text', '.pdf', '.png', '.jpg', '.jpeg'];
     
     const ext = require('path').extname(file.originalname).toLowerCase();
     if (allowedMimes.includes(file.mimetype) || allowedExt.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Chỉ hỗ trợ file text (.txt, .md) và PDF (.pdf). Vui lòng upload file đúng định dạng.'));
+      cb(new Error('Chỉ hỗ trợ file text (.txt, .md), PDF (.pdf) và ảnh (.png, .jpg, .jpeg). Vui lòng upload file đúng định dạng.'));
     }
   },
 });

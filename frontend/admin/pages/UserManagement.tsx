@@ -156,10 +156,6 @@ const UserManagement: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            // #region agent log
-                            const pathUsed = `preview/user/${user.id}`;
-                            fetch('http://127.0.0.1:7244/ingest/ce880661-753e-4c17-acfe-180cc31dd4ed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserManagement.tsx:onClick',message:'navigate to preview user',data:{userId:user.id,pathUsed,pathname:location.pathname,hash:typeof window!=='undefined'?window.location.hash:''},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-                            // #endregion
                             navigate(`/admin/preview/user/${user.id}`);
                           }}
                           className="flex items-center gap-3 w-full text-left hover:opacity-90 transition-opacity"

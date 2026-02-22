@@ -8,6 +8,8 @@ import { Button } from './quiz/Button';
 import { Input } from './quiz/Input';
 import { Select } from './quiz/Select';
 import { QuestionCard } from './quiz/QuestionCard';
+import { extractTextFromPdf } from '../utils/pdfExtractor';
+import { extractTextFromImage } from '../utils/ocrExtractor';
 
 type GenerationMode = 'topic' | 'file';
 
@@ -30,10 +32,12 @@ const AIQuestionGenerator: React.FC = () => {
 
   // File mode state
   const [file, setFile] = useState<File | null>(null);
+  const [textContent, setTextContent] = useState<string>('');
   const [filePreview, setFilePreview] = useState<string>('');
   const [fileDifficulty, setFileDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [fileType, setFileType] = useState<QuestionType>(QuestionType.MULTIPLE_CHOICE);
   const [fileCount, setFileCount] = useState<number>(5);
+  const [processingProgress, setProcessingProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Common state
@@ -60,10 +64,11 @@ const AIQuestionGenerator: React.FC = () => {
 
     // Validate file type
     const ext = selectedFile.name.split('.').pop()?.toLowerCase();
-    const validExt = ['txt', 'md', 'pdf'];
+    const validExt = ['txt', 'md', 'pdf', 'png', 'jpg', 'jpeg'];
+    const isImage = ['png', 'jpg', 'jpeg'].includes(ext || '');
     
     if (!validExt.includes(ext || '')) {
-      setError('Chỉ hỗ trợ file text (.txt, .md) và PDF (.pdf). Vui lòng chọn file đúng định dạng.');
+      setError('Chỉ hỗ trợ file text (.txt, .md), PDF (.pdf) và ảnh (.png, .jpg, .jpeg). Vui lòng chọn file đúng định dạng.');
       return;
     }
 
@@ -72,26 +77,50 @@ const AIQuestionGenerator: React.FC = () => {
       return;
     }
 
-    // Warn about PDF if user selects PDF
-    if (ext === 'pdf') {
-      setError('⚠️ PDF chưa được hỗ trợ đầy đủ. Vui lòng sử dụng file .txt hoặc .md để trích xuất nội dung một cách chính xác. Bạn có thể chuyển đổi PDF thành text bằng các công cụ trực tuyến miễn phí.');
-      setFile(null);
-      setFilePreview('');
-      return;
-    }
-
     setFile(selectedFile);
     setError(null);
+    setTextContent(''); // Reset text content if any
+    setProcessingProgress(0);
 
-    // Read file preview
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      const preview = content.length > 500 ? content.substring(0, 500) + '...' : content;
-      setFilePreview(preview);
-    };
-    
-    reader.readAsText(selectedFile);
+    // Read file preview or trigger extraction (PDF or OCR)
+    if (ext === 'pdf') {
+      setFilePreview('File PDF đã chọn. Đang trích xuất nội dung...');
+      try {
+        const text = await extractTextFromPdf(selectedFile);
+        setTextContent(text);
+        const preview = text.length > 500 ? text.substring(0, 500) + '...' : text;
+        setFilePreview(`(Trích xuất từ PDF ${selectedFile.name}):\n\n${preview}`);
+      } catch (err: any) {
+        setError(err.message || 'Lỗi khi trích xuất PDF.');
+        setFile(null);
+        setFilePreview('');
+      }
+    } else if (isImage) {
+      setFilePreview('Ảnh đã chọn. Đang xử lý OCR (nhận dạng chữ)...');
+      try {
+        const text = await extractTextFromImage(selectedFile, (progress) => {
+          setProcessingProgress(progress);
+        });
+        setTextContent(text);
+        const preview = text.length > 500 ? text.substring(0, 500) + '...' : text;
+        setFilePreview(`(Trích xuất từ Ảnh ${selectedFile.name}):\n\n${preview}`);
+      } catch (err: any) {
+        setError(err.message || 'Lỗi khi trích xuất văn bản từ ảnh.');
+        setFile(null);
+        setFilePreview('');
+      } finally {
+        setProcessingProgress(0);
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        setTextContent(content);
+        const preview = content.length > 500 ? content.substring(0, 500) + '...' : content;
+        setFilePreview(preview);
+      };
+      reader.readAsText(selectedFile);
+    }
   };
 
   const handleGenerateFromTopic = async () => {
@@ -153,8 +182,8 @@ const AIQuestionGenerator: React.FC = () => {
   };
 
   const handleGenerateFromFile = async () => {
-    if (!file) {
-      setError("Vui lòng chọn một file.");
+    if (!file && !textContent) {
+      setError("Vui lòng chọn một file hoặc đợi quá trình trích xuất văn bản hoàn tất.");
       return;
     }
 
@@ -171,11 +200,16 @@ const AIQuestionGenerator: React.FC = () => {
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      if (file) {
+        formData.append('file', file);
+      }
+      if (textContent) {
+        formData.append('textContent', textContent);
+      }
       formData.append('count', String(fileCount));
       formData.append('difficulty', fileDifficulty);
       formData.append('type', fileType);
-      formData.append('title', file.name.replace(/\.[^/.]+$/, "")); // Remove extension
+      formData.append('title', file?.name.replace(/\.[^/.]+$/, "") || "Bộ câu hỏi từ file"); // Remove extension
 
       const result = await aiApi.generateFromFile(null as any, formData);
       const list = result.data as GeneratedQuestion[];
@@ -379,14 +413,14 @@ const AIQuestionGenerator: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-3">
-                  Tải lên file (.txt, .md hoặc .pdf)
+                  Tải lên file (.txt, .md, .pdf hoặc ảnh .png, .jpg)
                 </label>
                 <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-slate-400 transition-colors cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf"
+                    accept=".txt,.md,.pdf,.png,.jpg,.jpeg,text/plain,text/markdown,application/pdf,image/png,image/jpeg"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -403,13 +437,30 @@ const AIQuestionGenerator: React.FC = () => {
 
                 {file && (
                   <div className="mt-4 p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm font-medium text-slate-700 mb-2">
-                      📄 {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                    </p>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-sm font-medium text-slate-700">
+                        📄 {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                      </p>
+                      {processingProgress > 0 && processingProgress < 100 && (
+                        <span className="text-xs font-semibold text-indigo-600 animate-pulse">
+                          Đang xử lý OCR: {processingProgress}%
+                        </span>
+                      )}
+                    </div>
+                    
+                    {processingProgress > 0 && processingProgress < 100 && (
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 mb-3">
+                        <div 
+                          className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" 
+                          style={{ width: `${processingProgress}%` }}
+                        ></div>
+                      </div>
+                    )}
+
                     {filePreview && (
                       <details className="text-xs">
                         <summary className="cursor-pointer text-slate-600 hover:text-slate-900 mb-2">
-                          {file.name.endsWith('.pdf') ? 'Thông tin file' : 'Xem trước nội dung'}
+                          {file.name.match(/\.(pdf|png|jpg|jpeg)$/i) ? 'Nội dung trích xuất' : 'Xem trước nội dung'}
                         </summary>
                         <pre className="bg-white p-2 rounded border border-slate-200 overflow-auto max-h-40 text-slate-700 whitespace-pre-wrap break-words text-xs">
                           {filePreview}

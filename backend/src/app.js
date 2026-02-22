@@ -41,8 +41,24 @@ app.use(express.static(clientPath));
 /**
  * React Router fallback (Express 5 FIX)
  */
-app.use((req, res) => {
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
   res.sendFile(path.join(clientPath, "index.html"));
+});
+
+/**
+ * Global Error Handler for API
+ */
+app.use((err, req, res, next) => {
+  console.error('API Error:', err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: err.message || 'Lỗi server nội bộ',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
 });
 
 module.exports = app;

@@ -1,0 +1,2 @@
+{"sessionId":"52f68f","location":"AIQuestionGenerator.tsx:210","message":"Calling generateFromFile","data":{"textContentLength":1776},"hypothesisId":"C","timestamp":1771777006928}
+{"sessionId":"52f68f","location":"AIQuestionGenerator.tsx:184","message":"handleGenerateFromFile clicked","data":{"hasFile":true,"hasTextContent":true,"isAuthenticated":true},"hypothesisId":"B","timestamp":1771777006928}

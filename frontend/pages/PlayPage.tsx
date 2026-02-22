@@ -5,7 +5,7 @@ import { Flag, X, Frown, Heart, Bookmark, Copy } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { publicApi, attemptsApi, reportApi, userFavoritesApi, PlayQuestion, QuestionSetMeta, SavedCollection } from '../services/api';
 
-const CONFETTI_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444'];
+const CONFETTI_COLORS = ['var(--primary-500)', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444'];
 const CONFETTI_COUNT = 60;
 
 function ConfettiEffect() {

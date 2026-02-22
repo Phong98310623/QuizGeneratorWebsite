@@ -28,26 +28,30 @@ const generateQuestions = async (req, res) => {
 
 const generateQuestionsFromFile = async (req, res) => {
   try {
-    // Kiểm tra file có được upload không
-    if (!req.file) {
+    // Kiểm tra file hoặc textContent
+    if (!req.file && (!req.body || !req.body.textContent)) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng upload một file.',
+        message: 'Vui lòng upload một file hoặc cung cấp nội dung văn bản.',
       });
     }
 
-    const { count, difficulty, type, title } = req.body || {};
-    const fileExt = require('path').extname(req.file.originalname).toLowerCase();
+    const { count, difficulty, type, title, textContent } = req.body || {};
+    const fileExt = req.file ? require('path').extname(req.file.originalname).toLowerCase() : '';
 
-    // Extract nội dung từ file (PDF hoặc text)
+    // Extract nội dung từ file (PDF hoặc text) hoặc dùng textContent trực tiếp
     let fileContent = '';
-    try {
-      fileContent = await aiService.extractFileContent(req.file.buffer, fileExt);
-    } catch (extractErr) {
-      return res.status(400).json({
-        success: false,
-        message: extractErr.message || 'Lỗi khi đọc file.',
-      });
+    if (textContent) {
+      fileContent = textContent;
+    } else if (req.file) {
+      try {
+        fileContent = await aiService.extractFileContent(req.file.buffer, fileExt);
+      } catch (extractErr) {
+        return res.status(400).json({
+          success: false,
+          message: extractErr.message || 'Lỗi khi đọc file.',
+        });
+      }
     }
 
     // Giới hạn kích thước nội dung

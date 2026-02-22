@@ -25,20 +25,20 @@ const UserLayout: React.FC = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-10 backdrop-blur-md bg-white/80">
+    <div className="min-h-screen bg-neutral-50">
+      <nav className="bg-white border-b border-neutral-200 sticky top-0 z-10 backdrop-blur-md bg-white/80">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-200">
+              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary-200">
                 Q
               </div>
-              <span className="text-lg font-bold tracking-tight text-slate-800">Quick Quiz AI</span>
+              <span className="text-lg font-bold tracking-tight text-neutral-800">Quick Quiz AI</span>
             </Link>
             <div className="hidden sm:flex items-center gap-1">
               <Link
                 to="/explore"
-                className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg flex items-center gap-1.5"
+                className="px-3 py-2 text-sm font-medium text-neutral-600 hover:text-primary-600 hover:bg-neutral-50 rounded-lg flex items-center gap-1.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -47,7 +47,7 @@ const UserLayout: React.FC = () => {
               </Link>
               <Link
                 to="/create"
-                className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg flex items-center gap-1.5"
+                className="px-3 py-2 text-sm font-medium text-neutral-600 hover:text-primary-600 hover:bg-neutral-50 rounded-lg flex items-center gap-1.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -60,12 +60,12 @@ const UserLayout: React.FC = () => {
             <button
               type="button"
               onClick={() => setUserMenuOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-lg hover:bg-slate-50 p-1 -m-1"
+              className="flex items-center gap-2 rounded-lg hover:bg-neutral-50 p-1 -m-1"
               aria-expanded={userMenuOpen}
               aria-haspopup="true"
             >
               {user.avatar ? (
-                <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-200" />
+                <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
               ) : (
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white"
@@ -74,20 +74,20 @@ const UserLayout: React.FC = () => {
                   {(user.fullName || user.email).charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="text-sm text-slate-500 hidden sm:inline truncate max-w-[200px]">
+              <span className="text-sm text-neutral-500 hidden sm:inline truncate max-w-[200px]">
                 {user.fullName || user.email}
               </span>
-              <svg className="w-4 h-4 text-slate-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-neutral-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
             {userMenuOpen && (
               <>
                 <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setUserMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 py-1 bg-white rounded-lg border border-slate-200 shadow-lg z-20">
+                <div className="absolute right-0 top-full mt-1 w-48 py-1 bg-white rounded-lg border border-neutral-200 shadow-lg z-20">
                   <Link
                     to="/profile"
-                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
                     onClick={() => setUserMenuOpen(false)}
                   >
                     Hồ sơ
@@ -111,22 +111,22 @@ const UserLayout: React.FC = () => {
       <main>
         <Outlet />
       </main>
-      <footer className="bg-slate-100 border-t border-slate-200 mt-auto">
+      <footer className="bg-neutral-100 border-t border-neutral-200 mt-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          <p className="text-sm text-slate-600 mb-2">Quick Quiz AI – Tạo và làm quiz nhanh với AI.</p>
+          <p className="text-sm text-neutral-600 mb-2">Quick Quiz AI – Tạo và làm quiz nhanh với AI.</p>
           <div className="flex flex-wrap gap-4 text-sm mb-2">
-            <Link to="#" className="text-slate-600 hover:text-indigo-600">Về chúng tôi</Link>
-            <a href="mailto:contact@example.com" className="text-slate-600 hover:text-indigo-600">Liên hệ</a>
-            <Link to="#" className="text-slate-600 hover:text-indigo-600">Điều khoản</Link>
+            <Link to="#" className="text-neutral-600 hover:text-primary-600">Về chúng tôi</Link>
+            <a href="mailto:contact@example.com" className="text-neutral-600 hover:text-primary-600">Liên hệ</a>
+            <Link to="#" className="text-neutral-600 hover:text-primary-600">Điều khoản</Link>
           </div>
-          <p className="text-xs text-slate-500">© {new Date().getFullYear()} Quick Quiz AI</p>
+          <p className="text-xs text-neutral-500">© {new Date().getFullYear()} Quick Quiz AI</p>
         </div>
       </footer>
       {showScrollTop && (
         <button
           type="button"
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-20 w-10 h-10 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-colors flex items-center justify-center"
+          className="fixed bottom-6 right-6 z-20 w-10 h-10 rounded-full bg-primary-600 text-white shadow-lg hover:bg-primary-700 transition-colors flex items-center justify-center"
           aria-label="Cuộn lên đầu trang"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
