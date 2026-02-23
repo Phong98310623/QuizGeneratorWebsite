@@ -125,6 +125,33 @@
   --primary-950: #2e1065;
 }
 
+/* Theme: VIP (Vàng đồng - Sang trọng) */
+[data-theme='vip'] {
+  --primary-50: #fffbeb;
+  --primary-100: #fef3c7;
+  --primary-200: #fde68a;
+  --primary-300: #fcd34d;
+  --primary-400: #fbbf24;
+  --primary-500: #f59e0b;
+  --primary-600: #d97706;
+  --primary-700: #b45309;
+  --primary-800: #92400e;
+  --primary-900: #78350f;
+  --primary-950: #451a03;
+
+  --neutral-50: #fffcf0; /* Nền kem rất nhạt sang trọng */
+  --neutral-100: #fef9e7;
+  --neutral-200: #fdf2c4;
+  --neutral-300: #fbe6a2;
+  --neutral-400: #f9d87e;
+  --neutral-500: #f7ca5a;
+  --neutral-600: #d9a43a;
+  --neutral-700: #b8862b;
+  --neutral-800: #946920;
+  --neutral-900: #704d16;
+  --neutral-950: #4a320d;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--neutral-50);

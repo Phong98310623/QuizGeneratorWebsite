@@ -51,11 +51,11 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Tạo tài khoản</h2>
-          <p className="text-gray-500 mt-2">Bắt đầu trải nghiệm của bạn hôm nay</p>
+          <h2 className="text-3xl font-bold text-neutral-900">Tạo tài khoản</h2>
+          <p className="text-neutral-500 mt-2">Bắt đầu trải nghiệm của bạn hôm nay</p>
         </div>
 
         {error && (
@@ -105,7 +105,7 @@ const RegisterPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition-colors flex items-center justify-center ${
+            className={`w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg shadow-md transition-colors flex items-center justify-center ${
               loading ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
@@ -113,9 +113,9 @@ const RegisterPage: React.FC = () => {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-neutral-600">
           Đã có tài khoản?{' '}
-          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+          <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-500">
             Đăng nhập
           </Link>
         </p>

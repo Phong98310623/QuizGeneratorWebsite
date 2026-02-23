@@ -31,6 +31,7 @@ app.use('/api/content', require('./routes/content.route'));
 app.use('/api/public', require('./routes/public.route'));
 app.use('/api/sets', require('./routes/sets.route'));
 app.use('/api/ai', require('./routes/ai.route'));
+app.use('/api/payment', require('./routes/payment.route'));
 
 /**
  * Serve React build

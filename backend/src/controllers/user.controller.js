@@ -2,7 +2,12 @@ const userService = require('../services/user.service');
 
 const createUser = async (req, res) => {
   try {
-    const user = await userService.createUser(req.body);
+    const { username, fullName, ...rest } = req.body;
+    const userData = {
+      username: username || fullName || (rest.email ? rest.email.split('@')[0] : 'user'),
+      ...rest
+    };
+    const user = await userService.createUser(userData);
     res.status(201).json({ success: true, data: user });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

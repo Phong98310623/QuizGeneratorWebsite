@@ -434,5 +434,27 @@ export const adminApi = {
     const data = await parseJson(response);
     if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể cập nhật');
   },
+
+  getPayments: async (status?: string): Promise<any[]> => {
+    const sp = status ? `?status=${status}` : '';
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/payment/admin/list${sp}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể tải danh sách thanh toán');
+    return data?.data ?? [];
+  },
+
+  updatePaymentStatus: async (paymentId: string, status: 'APPROVED' | 'REJECTED'): Promise<any> => {
+    const response = await fetchAdminAuth(`${API_BASE_URL}/api/payment/admin/update-status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentId, status }),
+    });
+    const data = await parseJson(response);
+    if (!response.ok) throw new Error(data?.message || data?.detail || 'Không thể cập nhật trạng thái thanh toán');
+    return data?.data ?? data;
+  },
 };
 

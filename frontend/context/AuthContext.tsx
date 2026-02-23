@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { User, AuthState } from '../types';
 import { setAuthCallbacks, setAuthUserCookie, getAuthUserCookie, clearAuthUserCookie } from '../services/api';
 import { authService } from '../services/api';
+import { initTheme } from '../utils/theme';
 
 interface AuthContextType extends AuthState {
   login: (user: User, _accessToken?: string, _refreshToken?: string) => void;
@@ -26,6 +27,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isAuthenticated: false,
       isLoading: false,
     });
+    // Re-initialize theme without VIP status on logout
+    initTheme(false);
   }, []);
 
   useEffect(() => {
@@ -36,8 +39,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: true,
         isLoading: false,
       });
+      // Initialize theme with VIP status
+      initTheme(savedUser.role === 'VIP');
     } else {
       setState(prev => ({ ...prev, isLoading: false }));
+      initTheme(false);
     }
   }, []);
 
@@ -52,6 +58,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isAuthenticated: true,
       isLoading: false,
     });
+    // Apply VIP theme on login if user is VIP
+    initTheme(user.role === 'VIP');
   };
 
   return (

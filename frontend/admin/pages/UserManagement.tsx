@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, ShieldCheck, Ban, CheckCircle, Search, Filter, Loader2, AlertCircle, X } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import UserAvatar from '../../components/UserAvatar';
 import { adminApi } from '../services/adminApi';
 import { User } from '../../types';
-import { stringToSafeColor } from '../../utils/avatar';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -160,20 +160,7 @@ const UserManagement: React.FC = () => {
                           }}
                           className="flex items-center gap-3 w-full text-left hover:opacity-90 transition-opacity"
                         >
-                          {user.avatar ? (
-                            <img
-                              src={user.avatar}
-                              alt=""
-                              className="w-10 h-10 rounded-full object-cover border border-slate-200"
-                            />
-                          ) : (
-                            <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white"
-                              style={{ backgroundColor: stringToSafeColor(user.email) }}
-                            >
-                              {(user.fullName || user.email).charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                          <UserAvatar user={user} size={40} />
                           <div>
                             <p className="font-bold text-slate-900">{user.fullName}</p>
                             <p className="text-xs text-slate-500">{user.email}</p>

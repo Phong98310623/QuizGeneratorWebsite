@@ -19,7 +19,12 @@ function clearAuthCookies(res) {
 // @route   POST /api/auth/register
 const register = async (req, res) => {
     try {
-        const user = await authService.registerUser(req.body);
+        const { username, fullName, email, password } = req.body;
+        const user = await authService.registerUser({
+            username: username || fullName || email.split('@')[0],
+            email,
+            password
+        });
         setAuthCookies(res, user.accessToken, user.refreshToken);
         return res.status(201).json({
             success: true,

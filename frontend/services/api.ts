@@ -123,7 +123,7 @@ const parseError = (data: unknown): string => {
 export const authService = {
   register: async (fullName: string, email: string, password: string): Promise<ApiResponse<User>> => {
     try {
-      const username = email;
+      const username = fullName;
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         credentials: 'include',
@@ -570,5 +570,41 @@ export const setsApi = {
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi lưu bộ câu hỏi');
     return (data as { data: QuestionSetMeta }).data;
+  },
+};
+
+export const paymentApi = {
+  requestPin: async (token: string, amount: number, method: 'PAYOS' | 'TRANSFER'): Promise<{ transactionContent: string; amount: number; method: string }> => {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/payment/request-pin`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, method }),
+      },
+      token
+    );
+    const data = await response.json();
+    if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi yêu cầu mã thanh toán');
+    return (data as { success: boolean; data: any }).data;
+  },
+
+  confirmTransfer: async (token: string, transactionContent: string): Promise<ApiResponse<any>> => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/payment/confirm-transfer`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transactionContent }),
+        },
+        token
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi xác nhận chuyển khoản');
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Lỗi kết nối' };
+    }
   },
 };

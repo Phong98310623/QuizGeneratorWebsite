@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
+import UserAvatar from './UserAvatar';
 import { useAuth } from '../context/AuthContext';
-import { stringToSafeColor } from '../utils/avatar';
 
 const UserLayout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -60,20 +60,11 @@ const UserLayout: React.FC = () => {
             <button
               type="button"
               onClick={() => setUserMenuOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-lg hover:bg-neutral-50 p-1 -m-1"
+              className="flex items-center gap-3 rounded-lg hover:bg-neutral-50 p-1 -m-1"
               aria-expanded={userMenuOpen}
               aria-haspopup="true"
             >
-              {user.avatar ? (
-                <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
-              ) : (
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white"
-                  style={{ backgroundColor: stringToSafeColor(user.email) }}
-                >
-                  {(user.fullName || user.email).charAt(0).toUpperCase()}
-                </div>
-              )}
+              <UserAvatar user={user} size="sm" />
               <span className="text-sm text-neutral-500 hidden sm:inline truncate max-w-[200px]">
                 {user.fullName || user.email}
               </span>
@@ -87,10 +78,15 @@ const UserLayout: React.FC = () => {
                 <div className="absolute right-0 top-full mt-1 w-48 py-1 bg-white rounded-lg border border-neutral-200 shadow-lg z-20">
                   <Link
                     to="/profile"
-                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center justify-between"
                     onClick={() => setUserMenuOpen(false)}
                   >
-                    Hồ sơ
+                    <span>Hồ sơ</span>
+                    {user.role === 'VIP' && (
+                      <span className="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+                        VIP
+                      </span>
+                    )}
                   </Link>
                   <button
                     type="button"

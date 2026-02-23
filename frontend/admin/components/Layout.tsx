@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Info,
   Megaphone,
+  CreditCard,
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { adminApi, getNotificationStreamUrl } from '../services/adminApi';
@@ -159,6 +160,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'User Directory', path: '/admin/users', icon: <Users size={20} /> },
     { name: 'Blacklist', path: '/admin/blacklist', icon: <UserX size={20} /> },
     { name: 'Report Queue', path: '/admin/reports', icon: <Flag size={20} /> },
+    { name: 'Payments', path: '/admin/payments', icon: <CreditCard size={20} /> },
     { name: 'Content Manager', path: '/admin/content', icon: <BookOpen size={20} /> },
   ];
 

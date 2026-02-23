@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import UserAvatar from '../../../components/UserAvatar';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { adminApi } from '../../services/adminApi';
 
@@ -244,21 +245,24 @@ const UserPreviewPage: React.FC = () => {
 
       <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
         {/* Avatar */}
-        {data.avatar && (
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Avatar</p>
-            <div className="flex items-start gap-4">
-              <img
-                src={data.avatar}
-                alt="Avatar"
-                className="w-20 h-20 rounded-xl object-cover border border-slate-200"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                (Base64 hoặc URL — chỉ xem, không sửa)
-              </p>
-            </div>
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Avatar</p>
+          <div className="flex items-start gap-4">
+            <UserAvatar 
+              user={{ 
+                id: userId, 
+                email: data.email || '', 
+                fullName: data.username || data.email || '', 
+                avatar: data.avatar,
+                role: data.role as any
+              }} 
+              size="lg" 
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              (Nếu là VIP sẽ hiển thị khung vàng)
+            </p>
           </div>
-        )}
+        </div>
 
         {/* Username */}
         <div>

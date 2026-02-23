@@ -11,6 +11,7 @@ import ProfilePage from './pages/ProfilePage';
 import PlayPage from './pages/PlayPage';
 import CustomizeQuestion from './pages/CustomizeQuestion';
 import CreateSetFromCollection from './pages/CreateSetFromCollection';
+import PaymentPage from './pages/PaymentPage';
 import UserLayout from './components/UserLayout';
 import { AdminAuthProvider } from './admin/context/AdminAuthContext';
 import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
@@ -21,6 +22,7 @@ import AdminUserManagement from './admin/pages/UserManagement';
 import AdminBlacklist from './admin/pages/Blacklist';
 import AdminContentManagement from './admin/pages/ContentManagement';
 import AdminReportModeration from './admin/pages/ReportModeration';
+import AdminPaymentsPage from './admin/pages/PaymentsPage';
 import UserPreviewPage from './admin/pages/preview/UserPreviewPage';
 import QuestionPreviewPage from './admin/pages/preview/QuestionPreviewPage';
 import SetPreviewPage from './admin/pages/preview/SetPreviewPage';
@@ -58,6 +60,7 @@ const AppRoutes: React.FC = () => {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="customize-question" element={<CustomizeQuestion />} />
         <Route path="create-set-from-collection" element={<CreateSetFromCollection />} />
+        <Route path="payment" element={<PaymentPage />} />
       </Route>
       <Route path="/play/:pin" element={<ProtectedRoute><PlayPage /></ProtectedRoute>} />
       {/* Admin routes */}
@@ -81,6 +84,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="blacklist" element={<AdminBlacklist />} />
                   <Route path="content" element={<AdminContentManagement />} />
                   <Route path="reports" element={<AdminReportModeration />} />
+                  <Route path="payments" element={<AdminPaymentsPage />} />
                   <Route path="preview/user/:id" element={<UserPreviewPage />} />
                   <Route path="preview/question/:id" element={<QuestionPreviewPage />} />
                   <Route path="preview/set/:id" element={<SetPreviewPage />} />

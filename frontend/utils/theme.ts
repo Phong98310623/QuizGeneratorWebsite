@@ -3,7 +3,7 @@
  * These match the themes defined in index.css.
  */
 
-export type ThemeType = 'default' | 'emerald' | 'rose' | 'violet';
+export type ThemeType = 'default' | 'emerald' | 'rose' | 'violet' | 'vip';
 
 /**
  * Sets the theme by adding/removing the data-theme attribute on the root html element.
@@ -26,9 +26,19 @@ export const setTheme = (themeName: ThemeType) => {
 
 /**
  * Initializes the theme from localStorage on page load.
+ * Optionally overrides with VIP theme if user is VIP.
+ * @param isVip - Whether the user has VIP status.
  */
-export const initTheme = () => {
+export const initTheme = (isVip?: boolean) => {
   const savedTheme = localStorage.getItem('app-theme') as ThemeType;
+  
+  // If user is VIP and no theme is saved or the saved theme is default, 
+  // we might want to default to the VIP theme.
+  if (isVip && (!savedTheme || savedTheme === 'default')) {
+    setTheme('vip');
+    return;
+  }
+
   if (savedTheme) {
     setTheme(savedTheme);
   } else {

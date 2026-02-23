@@ -42,11 +42,11 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Chào mừng trở lại</h2>
-          <p className="text-gray-500 mt-2">Vui lòng đăng nhập để tiếp tục</p>
+          <h2 className="text-3xl font-bold text-neutral-900">Chào mừng trở lại</h2>
+          <p className="text-neutral-500 mt-2">Vui lòng đăng nhập để tiếp tục</p>
         </div>
 
         {error && (
@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
               console.log("Login button clicked");
             }}
             disabled={loading}
-            className={`w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition-colors flex items-center justify-center ${
+            className={`w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg shadow-md transition-colors flex items-center justify-center ${
               loading ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
@@ -94,9 +94,9 @@ const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-neutral-600">
           Chưa có tài khoản?{' '}
-          <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-500">
+          <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-500">
             Đăng ký ngay
           </Link>
         </p>

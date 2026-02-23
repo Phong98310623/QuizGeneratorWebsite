@@ -132,19 +132,19 @@ const CustomizeQuestion: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
+    <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
-        <Link to="/profile" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600 mb-6">
+        <Link to="/profile" className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-primary-600 mb-6">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Quay lại Hồ sơ
         </Link>
 
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">Tạo câu hỏi thủ công</h1>
+        <h1 className="text-2xl font-bold text-neutral-800 mb-6">Tạo câu hỏi thủ công</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 space-y-4">
             <Input
               label="Tiêu đề bộ câu hỏi *"
               placeholder="Ví dụ: Ôn tập Lịch sử chương 1"
@@ -153,27 +153,27 @@ const CustomizeQuestion: React.FC = () => {
               required
             />
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Mô tả (tùy chọn)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Mô tả (tùy chọn)</label>
               <textarea
                 placeholder="Mô tả ngắn gọn về bộ câu hỏi..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
               />
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <h2 className="font-semibold text-slate-800">Câu hỏi</h2>
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 space-y-4">
+            <h2 className="font-semibold text-neutral-800">Câu hỏi</h2>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Nội dung câu hỏi *</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Nội dung câu hỏi *</label>
               <textarea
                 placeholder="Nhập nội dung câu hỏi..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                 required
               />
             </div>
@@ -191,16 +191,16 @@ const CustomizeQuestion: React.FC = () => {
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-slate-700">Các đáp án *</label>
+                <label className="text-sm font-medium text-neutral-700">Các đáp án *</label>
                 <button
                   type="button"
                   onClick={addOption}
-                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   + Thêm đáp án
                 </button>
               </div>
-              <p className="text-xs text-slate-500 mb-3">Chọn đáp án đúng bằng cách bấm vào ô vuông bên cạnh.</p>
+              <p className="text-xs text-neutral-500 mb-3">Chọn đáp án đúng bằng cách bấm vào ô vuông bên cạnh.</p>
               <div className="space-y-3">
                 {options.map((opt) => (
                   <div key={opt.id} className="flex items-center gap-2">
@@ -208,7 +208,7 @@ const CustomizeQuestion: React.FC = () => {
                       type="button"
                       onClick={() => setCorrectOption(opt.id)}
                       className={`w-6 h-6 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                        opt.isCorrect ? 'border-green-500 bg-green-50' : 'border-slate-300 hover:border-slate-400'
+                        opt.isCorrect ? 'border-green-500 bg-green-50' : 'border-neutral-300 hover:border-neutral-400'
                       }`}
                       title="Đánh dấu đáp án đúng"
                     >
@@ -223,13 +223,13 @@ const CustomizeQuestion: React.FC = () => {
                       placeholder="Nội dung đáp án"
                       value={opt.text}
                       onChange={(e) => updateOption(opt.id, 'text', e.target.value)}
-                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                     />
                     {options.length > 2 && (
                       <button
                         type="button"
                         onClick={() => removeOption(opt.id)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                         title="Xóa đáp án"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,13 +243,13 @@ const CustomizeQuestion: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Lời giải thích (tùy chọn)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Lời giải thích (tùy chọn)</label>
               <textarea
                 placeholder="Giải thích đáp án đúng..."
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -277,7 +277,7 @@ const CustomizeQuestion: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => { setSavedPin(null); setTitle(''); setContent(''); setOptions([{ id: '1', text: '', isCorrect: false }, { id: '2', text: '', isCorrect: false }]); setExplanation(''); setDescription(''); }}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm"
+                  className="px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded-lg text-sm"
                 >
                   Tạo mới
                 </button>
@@ -287,7 +287,7 @@ const CustomizeQuestion: React.FC = () => {
             <button
               type="submit"
               disabled={saving}
-              className="w-full px-4 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+              className="w-full px-4 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 disabled:opacity-50"
             >
               {saving ? 'Đang lưu...' : 'Lưu và tạo bộ câu hỏi'}
             </button>

@@ -1,12 +1,45 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Flag, X, Frown, Heart, Bookmark, Copy } from 'lucide-react';
+import { Flag, X, Frown, Heart, Bookmark, Copy, Sparkles, Star, ChevronDown, Compass, Plus, LogOut, User as UserIcon, Facebook, Share2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import UserAvatar from '../components/UserAvatar';
 import { publicApi, attemptsApi, reportApi, userFavoritesApi, PlayQuestion, QuestionSetMeta, SavedCollection } from '../services/api';
 
 const CONFETTI_COLORS = ['var(--primary-500)', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444'];
 const CONFETTI_COUNT = 60;
+
+function DecorativeBackground() {
+  const { user } = useAuth();
+  const isVip = user?.role === 'VIP';
+
+  return (
+    <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden opacity-30">
+      {/* Dynamic Gradients */}
+      <div 
+        className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[120px] bg-primary-200 animate-pulse"
+        style={{ animationDuration: '8s' }}
+      />
+      <div 
+        className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[120px] bg-primary-300 animate-pulse"
+        style={{ animationDuration: '12s', animationDelay: '2s' }}
+      />
+      
+      {/* VIP Specific floating elements */}
+      {isVip && (
+        <>
+          <Star className="absolute top-[15%] left-[10%] text-primary-400 animate-bounce" size={24} style={{ animationDuration: '4s' }} />
+          <Sparkles className="absolute top-[40%] right-[15%] text-primary-300 animate-pulse" size={32} style={{ animationDuration: '6s' }} />
+          <Star className="absolute bottom-[20%] left-[20%] text-primary-400 animate-bounce" size={20} style={{ animationDuration: '5s' }} />
+          <Sparkles className="absolute bottom-[40%] left-[5%] text-primary-200 animate-pulse" size={28} style={{ animationDuration: '7s' }} />
+        </>
+      )}
+
+      {/* Grid pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(var(--primary-200)_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+    </div>
+  );
+}
 
 function ConfettiEffect() {
   const pieces = useMemo(() =>
@@ -132,6 +165,8 @@ const PlayPage: React.FC = () => {
   const [collectionActionLoading, setCollectionActionLoading] = useState<string | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const normalizedPin = pin ? decodeURIComponent(pin).trim().toUpperCase() : '';
   const playLink = typeof window !== 'undefined'
@@ -163,7 +198,7 @@ const PlayPage: React.FC = () => {
     })();
   }, [normalizedPin]);
 
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   useEffect(() => {
     if (!isAuthenticated) return;
     (async () => {
@@ -176,6 +211,41 @@ const PlayPage: React.FC = () => {
       }
     })();
   }, [isAuthenticated]);
+
+  // Update OG Meta Tags dynamically for social sharing
+  useEffect(() => {
+    if (!meta) return;
+
+    const title = `${meta.title} (${questions.length} câu hỏi) - Quick Quiz AI`;
+    const topicText = meta.topic ? `Chủ đề: ${meta.topic}. ` : '';
+    const description = `Tham gia giải bộ câu hỏi trắc nghiệm "${meta.title}". ${topicText}${questions.length} câu hỏi đang chờ bạn. Thử thách bản thân ngay!`;
+    
+    // Set document title
+    document.title = title;
+
+    // Helper to update meta tags
+    const setMetaTag = (attr, value, content) => {
+      let tag = document.querySelector(`meta[${attr}="${value}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute(attr, value);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    };
+
+    // Open Graph meta tags (Facebook, etc.)
+    setMetaTag('property', 'og:title', title);
+    setMetaTag('property', 'og:description', description);
+    setMetaTag('property', 'og:url', playLink);
+    setMetaTag('property', 'og:type', 'website');
+    // We could add og:image if we have a thumbnail for the set
+    
+    // Twitter Card
+    setMetaTag('name', 'twitter:card', 'summary_large_image');
+    setMetaTag('name', 'twitter:title', title);
+    setMetaTag('name', 'twitter:description', description);
+  }, [meta, questions.length, playLink]);
 
   const current = questions[index];
   const isFavorite = current && isAuthenticated ? favorites.includes(current.id) : false;
@@ -307,20 +377,28 @@ const PlayPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <DecorativeBackground />
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+          <p className="text-primary-600 font-medium animate-pulse">Đang tải câu hỏi...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !meta) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <p className="text-red-600 mb-4">{error || 'Bộ câu hỏi không tồn tại.'}</p>
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+        <DecorativeBackground />
+        <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-xl border border-red-100">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X size={32} />
+          </div>
+          <p className="text-red-600 font-semibold mb-4 text-lg">{error || 'Bộ câu hỏi không tồn tại.'}</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-md shadow-primary-200"
           >
             Về trang chủ
           </button>
@@ -331,12 +409,16 @@ const PlayPage: React.FC = () => {
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-slate-600 mb-4">Bộ câu hỏi trống.</p>
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+        <DecorativeBackground />
+        <div className="text-center bg-white p-8 rounded-2xl shadow-xl border border-neutral-200 max-w-sm">
+          <div className="w-16 h-16 bg-neutral-100 text-neutral-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Frown size={32} />
+          </div>
+          <p className="text-neutral-600 mb-6 font-medium">Bộ câu hỏi này hiện đang trống.</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium"
           >
             Về trang chủ
           </button>
@@ -347,37 +429,199 @@ const PlayPage: React.FC = () => {
 
   if (!gameStarted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 max-w-sm w-full text-center">
-          <h2 className="text-xl font-bold text-slate-800 mb-2">{meta?.title}</h2>
-          <p className="text-slate-500 text-sm mb-6">{questions.length} câu hỏi</p>
-          <div className="flex justify-center mb-6">
-            <QRCodeSVG value={playLink} size={180} level="M" className="rounded-lg border border-slate-200 p-2 bg-white" />
+      <div className="min-h-screen bg-neutral-50 flex flex-col relative overflow-hidden">
+        <DecorativeBackground />
+        
+        {/* Navbar Layer */}
+        <nav className="bg-white/70 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-50">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <Link to="/dashboard" className="flex items-center gap-2 group transition-all">
+                <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary-200 group-hover:scale-105 group-hover:rotate-3 transition-all">
+                  Q
+                </div>
+                <span className="text-xl font-black tracking-tight text-neutral-800 hidden sm:inline">Quick Quiz AI</span>
+              </Link>
+              
+              <div className="hidden md:flex items-center gap-1">
+                <Link
+                  to="/explore"
+                  className="px-3 py-2 text-sm font-bold text-neutral-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl flex items-center gap-2 transition-all"
+                >
+                  <Compass size={18} />
+                  <span>Khám phá</span>
+                </Link>
+                <Link
+                  to="/create"
+                  className="px-3 py-2 text-sm font-bold text-neutral-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl flex items-center gap-2 transition-all"
+                >
+                  <Plus size={18} />
+                  <span>Tạo câu hỏi</span>
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isAuthenticated && user && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                    className="flex items-center gap-2.5 rounded-2xl hover:bg-neutral-100 p-1.5 transition-all border border-transparent hover:border-neutral-200"
+                  >
+                    <UserAvatar user={user} size="sm" />
+                    <span className="text-sm font-bold text-neutral-700 hidden sm:inline max-w-[120px] truncate">
+                      {user.fullName || user.email.split('@')[0]}
+                    </span>
+                    <ChevronDown size={16} className={`text-neutral-400 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {userMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-2 w-56 py-2 bg-white rounded-2xl border border-neutral-200 shadow-2xl z-20 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-4 py-3 mb-1 border-b border-neutral-50">
+                          <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Tài khoản</p>
+                          <p className="text-sm font-bold text-neutral-800 truncate">{user.fullName || user.email}</p>
+                        </div>
+                        <Link
+                          to="/profile"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-neutral-600 hover:text-primary-600 hover:bg-primary-50 transition-all"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <UserIcon size={18} />
+                          <span>Hồ sơ cá nhân</span>
+                          {user.role === 'VIP' && (
+                            <span className="ml-auto text-[8px] bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                              VIP
+                            </span>
+                          )}
+                        </Link>
+                        <hr className="border-neutral-100 my-1 mx-2" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            logout();
+                            navigate('/login');
+                          }}
+                          className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all"
+                        >
+                          <LogOut size={18} />
+                          <span>Đăng xuất</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <p className="text-slate-600 text-sm mb-1">Mã PIN</p>
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <p className="text-2xl font-bold font-mono text-indigo-600">{normalizedPin}</p>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(normalizedPin);
-                setPinCopied(true);
-                setTimeout(() => setPinCopied(false), 1500);
-              }}
-              className={`p-2 rounded-lg transition-colors ${pinCopied ? 'text-green-600 bg-green-50' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
-              title="Sao chép mã PIN"
-            >
-              <Copy size={20} />
-            </button>
+        </nav>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex items-center justify-center p-2 sm:p-6">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl border border-primary-100 p-6 sm:p-8 max-w-sm w-full text-center relative overflow-hidden animate-in zoom-in-95 duration-500">
+            {/* Decorative element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-bl-full -z-0 opacity-40" />
+            
+            <div className="relative z-10">
+              <h2 className="text-xl font-black text-neutral-800 mb-1 leading-tight">{meta?.title}</h2>
+              <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-primary-100 text-primary-700 rounded-full text-xs font-black mb-6 border border-primary-200">
+                <Sparkles size={12} />
+                <span className="uppercase tracking-wider">{questions.length} CÂU HỎI</span>
+              </div>
+              
+              <div className="flex justify-center mb-6">
+                <div className="p-3 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-primary-50 transform hover:scale-105 transition-all duration-500">
+                  <QRCodeSVG value={playLink} size={160} level="H" includeMargin={true} />
+                </div>
+              </div>
+              
+              <div className="bg-neutral-50 rounded-[2rem] p-4 mb-6 border border-neutral-100 shadow-inner">
+                <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Mã PIN tham gia</p>
+                <div className="flex items-center justify-center gap-4">
+                  <p className="text-3xl font-black font-mono text-primary-600 tracking-tighter">{normalizedPin}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(normalizedPin);
+                      setPinCopied(true);
+                      setTimeout(() => setPinCopied(false), 1500);
+                    }}
+                    className={`p-2.5 rounded-2xl transition-all ${pinCopied ? 'text-green-600 bg-green-50 scale-95 shadow-inner' : 'text-neutral-400 hover:text-primary-600 hover:bg-white hover:shadow-md'}`}
+                    title="Sao chép mã PIN"
+                  >
+                    <Copy size={22} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const shareText = `🎯 Thử thách ngay: "${meta?.title}"
+📚 Chủ đề: ${meta?.topic || 'Tổng hợp'}
+❓ Số câu hỏi: ${questions.length} câu
+🔗 Chơi ngay tại: ${playLink}
+#QuickQuizAI #Learning #Quiz`;
+                      
+                      // Copy to clipboard
+                      navigator.clipboard.writeText(shareText);
+                      setShareCopied(true);
+                      setTimeout(() => setShareCopied(false), 2000);
+
+                      // Open Facebook Sharer
+                      const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(playLink)}`;
+                      window.open(shareUrl, '_blank', 'width=600,height=400');
+                    }}
+                    className="p-2.5 rounded-2xl transition-all text-[#1877F2] hover:bg-white hover:shadow-md relative flex items-center justify-center"
+                    title="Chia sẻ lên Facebook và sao chép lời mời"
+                  >
+                    <Facebook size={22} />
+                    {shareCopied && (
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-green-600 text-white text-[10px] py-1 px-2 rounded-lg whitespace-nowrap animate-in fade-in slide-in-from-bottom-2">
+                        Đã sao chép nội dung!
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const shareText = `🎯 Thử thách ngay: "${meta?.title}"
+📚 Chủ đề: ${meta?.topic || 'Tổng hợp'}
+❓ Số câu hỏi: ${questions.length} câu
+🔗 Chơi ngay tại: ${playLink}
+#QuickQuizAI #Learning #Quiz`;
+                      navigator.clipboard.writeText(shareText);
+                      setShareCopied(true);
+                      setTimeout(() => setShareCopied(false), 2000);
+                    }}
+                    className={`p-2.5 rounded-2xl transition-all relative flex items-center justify-center ${shareCopied ? 'text-green-600 bg-green-50' : 'text-primary-600 hover:bg-white hover:shadow-md'}`}
+                    title="Sao chép nội dung mời tham gia"
+                  >
+                    <Share2 size={22} />
+                    {shareCopied && (
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-green-600 text-white text-[10px] py-1 px-2 rounded-lg whitespace-nowrap animate-in fade-in slide-in-from-bottom-2">
+                        Đã sao chép nội dung!
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setGameStarted(true)}
+                className="w-full py-4 px-8 bg-primary-600 text-white font-black rounded-[1.5rem] hover:bg-primary-700 hover:shadow-2xl hover:shadow-primary-300 transition-all active:scale-[0.97] text-lg uppercase tracking-wider"
+              >
+                BẮT ĐẦU NGAY
+              </button>
+              <p className="text-[10px] text-neutral-400 mt-4 italic font-bold">Quét mã QR hoặc nhập PIN để bắt đầu làm bài</p>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mb-6">Quét QR để chia sẻ link làm bài</p>
-          <button
-            type="button"
-            onClick={() => setGameStarted(true)}
-            className="w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700"
-          >
-            Bắt đầu
-          </button>
+        </div>
+        
+        {/* Footer for extra polish */}
+        <div className="py-4 text-center">
+          <p className="text-xs font-bold text-neutral-400">© {new Date().getFullYear()} Quick Quiz AI</p>
         </div>
       </div>
     );
@@ -387,32 +631,70 @@ const PlayPage: React.FC = () => {
   if (finished) {
     const total = questions.length;
     const correct = correctCount;
-    const passed = total > 0 && correct / total > 0.5;
+    const percent = total > 0 ? (correct / total) * 100 : 0;
+    const passed = percent >= 50;
+
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4 relative overflow-hidden">
+        <DecorativeBackground />
         {passed ? <ConfettiEffect /> : <SadFacesEffect />}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 max-w-md w-full text-center relative z-10">
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Kết quả</h2>
-          <p className="text-3xl font-bold text-indigo-600 mb-1">{correct} / {total}</p>
-          <p className="text-slate-500 mb-6">câu đúng</p>
-          <div className="flex flex-wrap gap-3 justify-center">
+        <div className="bg-white rounded-3xl shadow-2xl border border-primary-100 p-8 max-w-md w-full text-center relative z-10 overflow-hidden">
+          <div className={`absolute top-0 left-0 w-full h-2 ${passed ? 'bg-green-500' : 'bg-amber-500'}`} />
+          
+          <h2 className="text-2xl font-black text-neutral-800 mb-6 uppercase tracking-tight">KẾT QUẢ CỦA BẠN</h2>
+          
+          <div className="relative inline-block mb-6">
+            <svg className="w-32 h-32 transform -rotate-90">
+              <circle
+                cx="64"
+                cy="64"
+                r="58"
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="transparent"
+                className="text-neutral-100"
+              />
+              <circle
+                cx="64"
+                cy="64"
+                r="58"
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="transparent"
+                strokeDasharray={364.4}
+                strokeDashoffset={364.4 - (364.4 * percent) / 100}
+                strokeLinecap="round"
+                className={`${passed ? 'text-green-500' : 'text-amber-500'} transition-all duration-1000 ease-out`}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-black text-neutral-800">{correct}/{total}</span>
+              <span className="text-[10px] font-bold text-neutral-500 uppercase">Câu đúng</span>
+            </div>
+          </div>
+
+          <div className={`mb-8 p-4 rounded-2xl ${passed ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'} font-bold`}>
+            {passed ? 'Chúc mừng! Bạn đã hoàn thành tốt.' : 'Cố gắng lên! Hãy thử lại nhé.'}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+              className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold transition-all shadow-md shadow-primary-100"
             >
-              Về trang chủ
+              Trang chủ
             </button>
             <button
               onClick={handlePlayAgain}
-              className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium"
+              className="px-6 py-3 border-2 border-primary-600 text-primary-600 rounded-xl hover:bg-primary-50 font-bold transition-all"
             >
               Làm lại
             </button>
             <button
               onClick={() => navigate('/explore')}
-              className="px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 text-sm font-medium"
+              className="sm:col-span-2 px-6 py-3 bg-neutral-800 text-white rounded-xl hover:bg-neutral-900 font-bold transition-all"
             >
-              Khám phá thêm
+              Khám phá thêm bộ câu hỏi
             </button>
           </div>
         </div>
@@ -424,112 +706,162 @@ const PlayPage: React.FC = () => {
   const options = q.options?.length ? q.options : (q.correctAnswer ? [{ text: q.correctAnswer, isCorrect: true }] : []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 py-3 px-4">
+    <div className="min-h-screen bg-neutral-50 relative">
+      <DecorativeBackground />
+      <header className="bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 py-3 px-4 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="text-slate-500 hover:text-slate-700 text-sm"
+            className="text-neutral-400 hover:text-red-500 transition-colors font-bold text-xs uppercase tracking-widest flex items-center gap-1"
           >
-            Thoát
+            <X size={16} /> Thoát
           </button>
-          <span className="text-sm font-medium text-slate-600">{meta.title}</span>
-          <span className="text-sm text-slate-400">{index + 1} / {questions.length}</span>
+          <div className="flex flex-col items-center">
+            <span className="text-xs font-bold text-neutral-400 uppercase tracking-tighter mb-0.5">Đang làm bài</span>
+            <span className="text-sm font-black text-primary-600 truncate max-w-[150px] sm:max-w-none">{meta.title}</span>
+          </div>
+          <div className="bg-primary-50 px-3 py-1 rounded-full border border-primary-100">
+            <span className="text-xs font-black text-primary-700">{index + 1} / {questions.length}</span>
+          </div>
         </div>
       </header>
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-          <div className="flex items-start justify-between gap-3 mb-6">
-            <h2 className="text-lg font-semibold text-slate-800 flex-1">{q.content}</h2>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {isAuthenticated && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleToggleFavorite}
-                    disabled={favoritesLoading}
-                    className={`p-2 rounded-lg transition-colors ${
-                      isFavorite
-                        ? 'text-rose-500 hover:bg-rose-50'
-                        : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'
-                    }`}
-                    title={isFavorite ? 'Bỏ khỏi yêu thích' : 'Thêm vào yêu thích'}
-                  >
-                    <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenBookmarkModal}
-                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                    title="Lưu vào bộ sưu tập"
-                  >
-                    <Bookmark size={18} />
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={openReportModal}
-                className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                title="Báo cáo câu hỏi"
-              >
-                <Flag size={18} />
-              </button>
-            </div>
+      
+      <main className="max-w-2xl mx-auto px-4 py-8 relative z-10">
+        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden">
+          {/* Progress bar */}
+          <div className="w-full h-1.5 bg-neutral-100">
+            <div 
+              className="h-full bg-primary-500 transition-all duration-300 ease-out"
+              style={{ width: `${((index + 1) / questions.length) * 100}%` }}
+            />
           </div>
-          <div className="space-y-2">
-            {options.map((opt) => {
-              const isChosen = selected === opt.text;
-              const showRight = submitted && opt.isCorrect;
-              const showWrong = submitted && isChosen && !opt.isCorrect;
-              return (
+
+          <div className="p-6 sm:p-10">
+            <div className="flex items-start justify-between gap-4 mb-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-neutral-800 leading-tight">{q.content}</h2>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {isAuthenticated && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleToggleFavorite}
+                      disabled={favoritesLoading}
+                      className={`p-2.5 rounded-xl transition-all shadow-sm ${
+                        isFavorite
+                          ? 'bg-rose-50 text-rose-500 border border-rose-100'
+                          : 'bg-neutral-50 text-neutral-400 border border-neutral-100 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100'
+                      }`}
+                      title={isFavorite ? 'Bỏ khỏi yêu thích' : 'Thêm vào yêu thích'}
+                    >
+                      <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenBookmarkModal}
+                      className="p-2.5 bg-neutral-50 text-neutral-400 border border-neutral-100 hover:text-primary-600 hover:bg-primary-50 hover:border-primary-100 rounded-xl transition-all shadow-sm"
+                      title="Lưu vào bộ sưu tập"
+                    >
+                      <Bookmark size={20} />
+                    </button>
+                  </>
+                )}
                 <button
-                  key={opt.text}
                   type="button"
-                  disabled={submitted}
-                  onClick={() => !submitted && setSelected(opt.text)}
-                  className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
-                    showRight ? 'border-green-500 bg-green-50 text-green-800' :
-                    showWrong ? 'border-red-500 bg-red-50 text-red-800' :
-                    isChosen ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
-                  }`}
+                  onClick={openReportModal}
+                  className="p-2.5 bg-neutral-50 text-neutral-400 border border-neutral-100 hover:text-amber-600 hover:bg-amber-50 hover:border-amber-100 rounded-xl transition-all shadow-sm"
+                  title="Báo cáo câu hỏi"
                 >
-                  {opt.text}
+                  <Flag size={20} />
                 </button>
-              );
-            })}
-          </div>
-          {q.explanation && submitted && (
-            <p className="mt-4 text-sm text-slate-600 p-3 bg-slate-50 rounded-lg">{q.explanation}</p>
-          )}
-          <div className="mt-6 flex justify-end gap-2">
-            {!submitted ? (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={selected === null}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-              >
-                Xác nhận
-              </button>
-            ) : isLast ? (
-              <button
-                type="button"
-                onClick={handleFinish}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                Xem kết quả
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                Câu tiếp
-              </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {options.map((opt, i) => {
+                const isChosen = selected === opt.text;
+                const showRight = submitted && opt.isCorrect;
+                const showWrong = submitted && isChosen && !opt.isCorrect;
+                
+                // Color variants for options
+                const colors = [
+                  'border-blue-200 bg-blue-50/30 text-blue-900 hover:bg-blue-50',
+                  'border-purple-200 bg-purple-50/30 text-purple-900 hover:bg-purple-50',
+                  'border-amber-200 bg-amber-50/30 text-amber-900 hover:bg-amber-50',
+                  'border-emerald-200 bg-emerald-50/30 text-emerald-900 hover:bg-emerald-50'
+                ];
+                const baseColor = colors[i % colors.length];
+
+                return (
+                  <button
+                    key={opt.text}
+                    type="button"
+                    disabled={submitted}
+                    onClick={() => !submitted && setSelected(opt.text)}
+                    className={`group relative w-full text-left px-6 py-4 rounded-2xl border-2 transition-all duration-200 ${
+                      showRight ? 'border-green-500 bg-green-50 text-green-800 shadow-md shadow-green-100 ring-2 ring-green-200' :
+                      showWrong ? 'border-red-500 bg-red-50 text-red-800 shadow-md shadow-red-100' :
+                      isChosen ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200 shadow-md' : 
+                      `border-transparent bg-neutral-50 hover:border-neutral-200 hover:bg-neutral-100/50`
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm transition-colors ${
+                        showRight ? 'bg-green-500 text-white' :
+                        showWrong ? 'bg-red-500 text-white' :
+                        isChosen ? 'bg-primary-500 text-white' : 'bg-neutral-200 text-neutral-500 group-hover:bg-neutral-300'
+                      }`}>
+                        {String.fromCharCode(65 + i)}
+                      </div>
+                      <span className="font-semibold text-lg">{opt.text}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {q.explanation && submitted && (
+              <div className="mt-8 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="p-5 bg-primary-50 rounded-2xl border border-primary-100 flex gap-4">
+                  <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0 text-primary-600">
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-primary-800 text-sm uppercase tracking-wider mb-1">Giải thích</h4>
+                    <p className="text-primary-900/80 leading-relaxed">{q.explanation}</p>
+                  </div>
+                </div>
+              </div>
             )}
+
+            <div className="mt-10 flex justify-end">
+              {!submitted ? (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={selected === null}
+                  className="group px-8 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 disabled:opacity-50 disabled:grayscale transition-all font-bold text-lg shadow-lg shadow-primary-200 active:scale-95 flex items-center gap-2"
+                >
+                  XÁC NHẬN
+                </button>
+              ) : isLast ? (
+                <button
+                  type="button"
+                  onClick={handleFinish}
+                  className="px-8 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold text-lg shadow-lg shadow-primary-200 active:scale-95"
+                >
+                  XEM KẾT QUẢ
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="px-8 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold text-lg shadow-lg shadow-primary-200 active:scale-95 flex items-center gap-2"
+                >
+                  CÂU TIẾP THEO
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </main>
