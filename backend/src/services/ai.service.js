@@ -23,7 +23,7 @@ const responseSchema = {
 };
 
 /**
- * Kiểm tra cache: nếu đã có question_set với cùng (topic, count, difficulty, type) thì trả về data từ cache.
+ * cc: nếu đã có question_set với cùng (topic, count, difficulty, type) thì trả về data từ cache.
  */
 async function getCachedQuestions(topicTrim, numCount, difficultyStr, typeStr) {
   const cached = await QuestionSet.findOne({
@@ -126,7 +126,7 @@ async function callGeminiGenerate(apiKey, topicTrim, numCount, difficultyStr, ty
  * @returns { data, fromCache?, existingPin? }
  */
 async function generateQuestions(params) {
-  const { topic, count, difficulty, type } = params;
+  const { topic, count, difficulty, type, title, description, createdBy } = params;
   const topicTrim = (topic && typeof topic === 'string' ? topic : '').trim();
   if (!topicTrim) {
     const err = new Error('Thiếu chủ đề (topic).');
@@ -134,13 +134,15 @@ async function generateQuestions(params) {
     throw err;
   }
 
-  const numCount = Math.min(10, Math.max(1, parseInt(count, 10) || 5));
+  const numCount = Math.min(20, Math.max(1, parseInt(count, 10) || 5));
   const difficultyStr = difficulty && String(difficulty).trim() ? String(difficulty).trim() : 'Trung bình';
   const typeStr = type && String(type).trim() ? String(type).trim() : 'Trắc nghiệm';
 
+  // 1. Kiểm tra cache
   const cached = await getCachedQuestions(topicTrim, numCount, difficultyStr, typeStr);
   if (cached) return cached;
 
+  // 2. Gọi AI nếu không có cache
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || !apiKey.trim()) {
     const err = new Error('Chưa cấu hình GEMINI_API_KEY trên server. Không thể tạo câu hỏi bằng AI.');
@@ -148,8 +150,46 @@ async function generateQuestions(params) {
     throw err;
   }
 
-  const data = await callGeminiGenerate(apiKey, topicTrim, numCount, difficultyStr, typeStr);
-  return { data, fromCache: false };
+  const list = await callGeminiGenerate(apiKey, topicTrim, numCount, difficultyStr, typeStr);
+
+  // 3. Lưu vào DB và Cache
+  const savedQuestions = await Question.insertMany(
+    list.map((q) => ({
+      content: q.question,
+      options: q.options.map((opt) => ({
+        text: opt,
+        isCorrect: opt === q.correctAnswer,
+      })),
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation,
+      difficulty: difficultyStr === 'Dễ' ? 'easy' : difficultyStr === 'Khó' ? 'hard' : 'medium',
+    }))
+  );
+
+  const questionIds = savedQuestions.map((q) => q._id);
+  const finalTitle = (title && typeof title === 'string' ? title.trim() : '') || topicTrim;
+  const pin = await QuestionSet.generateUniquePin();
+
+  const newSet = await QuestionSet.create({
+    title: finalTitle,
+    description: description || `Bộ câu hỏi về chủ đề ${topicTrim}`,
+    type: typeStr,
+    questionIds,
+    pin,
+    createdBy: createdBy || null,
+    // Lưu các tham số để cache
+    generatorTopic: topicTrim,
+    generatorCount: numCount,
+    generatorDifficulty: difficultyStr,
+    generatorType: typeStr,
+  });
+
+  return { 
+    data: list, 
+    fromCache: false, 
+    existingPin: pin,
+    setId: newSet._id
+  };
 }
 
 /**
@@ -268,21 +308,16 @@ async function callGeminiGenerateFromFile(apiKey, fileContent, numCount, difficu
 
 /**
  * Sinh câu hỏi từ nội dung file
- * @param {string} fileContent - Nội dung file (text)
- * @param {number} count - Số lượng câu hỏi
- * @param {string} difficulty - Độ khó
- * @param {string} type - Loại câu hỏi
- * @param {string} title - Tiêu đề bộ câu hỏi
- * @returns { data, fromCache?: false }
+ * @returns { data, fromCache?: false, setId?, existingPin? }
  */
-async function generateQuestionsFromFile(fileContent, count, difficulty, type, title) {
+async function generateQuestionsFromFile(fileContent, count, difficulty, type, title, description, createdBy) {
   if (!fileContent || typeof fileContent !== 'string' || !fileContent.trim()) {
     const err = new Error('Nội dung file trống hoặc không hợp lệ.');
     err.statusCode = 400;
     throw err;
   }
 
-  const numCount = Math.min(10, Math.max(1, parseInt(count, 10) || 5));
+  const numCount = Math.min(20, Math.max(1, parseInt(count, 10) || 5));
   const difficultyStr = difficulty && String(difficulty).trim() ? String(difficulty).trim() : 'Trung bình';
   const typeStr = type && String(type).trim() ? String(type).trim() : 'Trắc nghiệm';
 
@@ -293,8 +328,40 @@ async function generateQuestionsFromFile(fileContent, count, difficulty, type, t
     throw err;
   }
 
-  const data = await callGeminiGenerateFromFile(apiKey, fileContent, numCount, difficultyStr, typeStr);
-  return { data, fromCache: false };
+  const list = await callGeminiGenerateFromFile(apiKey, fileContent, numCount, difficultyStr, typeStr);
+
+  // Lưu vào DB (file upload không cache bằng topic, nhưng vẫn tạo QuestionSet để dùng)
+  const savedQuestions = await Question.insertMany(
+    list.map((q) => ({
+      content: q.question,
+      options: q.options.map((opt) => ({
+        text: opt,
+        isCorrect: opt === q.correctAnswer,
+      })),
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation,
+      difficulty: difficultyStr === 'Dễ' ? 'easy' : difficultyStr === 'Khó' ? 'hard' : 'medium',
+    }))
+  );
+
+  const questionIds = savedQuestions.map((q) => q._id);
+  const pin = await QuestionSet.generateUniquePin();
+
+  const newSet = await QuestionSet.create({
+    title: (title && typeof title === 'string' ? title.trim() : '') || 'Bộ câu hỏi từ tài liệu',
+    description: description || 'Bộ câu hỏi được tạo từ nội dung file upload',
+    type: typeStr,
+    questionIds,
+    pin,
+    createdBy: createdBy || null,
+  });
+
+  return { 
+    data: list, 
+    fromCache: false, 
+    setId: newSet._id, 
+    existingPin: pin 
+  };
 }
 
 module.exports = {

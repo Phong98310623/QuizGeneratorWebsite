@@ -349,6 +349,8 @@ export interface AiGeneratePayload {
   count: number;
   difficulty: string;
   type: string;
+  title?: string;
+  description?: string;
 }
 
 /** Câu hỏi do AI trả về (backend /api/ai/generate). */
@@ -363,6 +365,7 @@ export interface AiGenerateResult {
   data: GeneratedQuestionFromApi[];
   fromCache?: boolean;
   existingPin?: string | null;
+  setId?: string;
 }
 
 export const aiApi = {
@@ -378,11 +381,12 @@ export const aiApi = {
     );
     const json = await response.json();
     if (!response.ok) throw new Error((json as { message?: string }).message || 'Lỗi khi tạo câu hỏi bằng AI');
-    const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null };
+    const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null; setId?: string };
     return {
       data: body.data,
       fromCache: body.fromCache,
       existingPin: body.existingPin ?? null,
+      setId: body.setId,
     };
   },
 
@@ -397,11 +401,12 @@ export const aiApi = {
     );
     const json = await response.json();
     if (!response.ok) throw new Error((json as { message?: string }).message || 'Lỗi khi tạo câu hỏi từ file');
-    const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null };
+    const body = json as { success: boolean; data: GeneratedQuestionFromApi[]; fromCache?: boolean; existingPin?: string | null; setId?: string };
     return {
       data: body.data,
       fromCache: body.fromCache,
       existingPin: body.existingPin ?? null,
+      setId: body.setId,
     };
   },
 };

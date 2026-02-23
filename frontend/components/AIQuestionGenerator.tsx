@@ -52,12 +52,6 @@ const AIQuestionGenerator: React.FC = () => {
   const [savedPin, setSavedPin] = useState<string | null>(null);
   const topicInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (mode === 'topic') {
-      setSaveTitle((prev) => (prev === '' || prev === topic ? topic : prev));
-    }
-  }, [topic, mode]);
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -146,32 +140,14 @@ const AIQuestionGenerator: React.FC = () => {
         count,
         difficulty,
         type,
+        title: saveTitle.trim() || undefined,
+        description: saveDescription.trim() || undefined,
       });
       const list = result.data as GeneratedQuestion[];
       setQuestions(list);
 
-      if (result.fromCache && result.existingPin) {
+      if (result.existingPin) {
         setSavedPin(result.existingPin);
-      } else {
-        const title = (saveTitle || topic).trim() || topic.trim();
-        const payload = {
-          title,
-          description: saveDescription.trim() || undefined,
-          type: type || undefined,
-          questions: list.map((q) => ({
-            content: q.question,
-            options: q.options && q.options.length > 0 ? q.options : [q.correctAnswer],
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation || undefined,
-            difficulty: difficultyToBackend(difficulty),
-          })),
-          generatorTopic: topic.trim(),
-          generatorCount: count,
-          generatorDifficulty: difficulty,
-          generatorType: type,
-        };
-        const saveResult = await setsApi.create(null as any, payload);
-        setSavedPin(saveResult.pin || null);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
@@ -209,28 +185,20 @@ const AIQuestionGenerator: React.FC = () => {
       formData.append('count', String(fileCount));
       formData.append('difficulty', fileDifficulty);
       formData.append('type', fileType);
-      formData.append('title', file?.name.replace(/\.[^/.]+$/, "") || "Bộ câu hỏi từ file"); // Remove extension
+      
+      const titleToUse = saveTitle.trim() || (file?.name.replace(/\.[^/.]+$/, "") || "Bộ câu hỏi từ file");
+      formData.append('title', titleToUse);
+      if (saveDescription.trim()) {
+        formData.append('description', saveDescription.trim());
+      }
 
       const result = await aiApi.generateFromFile(null as any, formData);
       const list = result.data as GeneratedQuestion[];
       setQuestions(list);
 
-      // Auto save
-      const fileName = file.name.replace(/\.[^/.]+$/, "");
-      const payload = {
-        title: fileName,
-        description: `Tạo từ file: ${file.name}`,
-        type: fileType || undefined,
-        questions: list.map((q) => ({
-          content: q.question,
-          options: q.options && q.options.length > 0 ? q.options : [q.correctAnswer],
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation || undefined,
-          difficulty: difficultyToBackend(fileDifficulty),
-        })),
-      };
-      const saveResult = await setsApi.create(null as any, payload);
-      setSavedPin(saveResult.pin || null);
+      if (result.existingPin) {
+        setSavedPin(result.existingPin);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
       setError(msg);
@@ -268,10 +236,15 @@ const AIQuestionGenerator: React.FC = () => {
 
   const handleSaveSet = async () => {
     if (questions.length === 0) return;
-    if (!saveTitle.trim()) {
-      setSaveError('Vui lòng nhập tên bộ câu hỏi.');
+    
+    // Fallback title: use saveTitle, then topic, then generic name
+    const finalTitle = saveTitle.trim() || (mode === 'topic' ? topic.trim() : 'Bộ câu hỏi từ AI');
+    
+    if (!finalTitle) {
+      setSaveError('Vui lòng nhập tên bộ câu hỏi hoặc chủ đề.');
       return;
     }
+    
     if (!isAuthenticated) {
       setSaveError('Bạn cần đăng nhập để lưu bộ câu hỏi.');
       return;
@@ -279,18 +252,22 @@ const AIQuestionGenerator: React.FC = () => {
     setSaveError(null);
     setSaving(true);
     try {
-      const difficulty = mode === 'topic' ? difficultyToBackend(fileDifficulty) : difficultyToBackend(fileDifficulty);
+      const diffStr = mode === 'topic' ? difficultyToBackend(difficulty) : difficultyToBackend(fileDifficulty);
       const payload = {
-        title: saveTitle.trim(),
-        description: saveDescription.trim() || undefined,
+        title: finalTitle,
+        description: saveDescription.trim() || (mode === 'file' && file ? `Tạo từ file: ${file.name}` : undefined),
         type: (mode === 'topic' ? type : fileType) || undefined,
         questions: questions.map((q) => ({
           content: q.question,
           options: q.options && q.options.length > 0 ? q.options : [q.correctAnswer],
           correctAnswer: q.correctAnswer,
           explanation: q.explanation || undefined,
-          difficulty,
+          difficulty: diffStr,
         })),
+        generatorTopic: mode === 'topic' ? topic.trim() : undefined,
+        generatorCount: mode === 'topic' ? count : fileCount,
+        generatorDifficulty: mode === 'topic' ? difficulty : fileDifficulty,
+        generatorType: mode === 'topic' ? type : fileType,
       };
       const result = await setsApi.create(null as any, payload);
       setSavedPin(result.pin || null);

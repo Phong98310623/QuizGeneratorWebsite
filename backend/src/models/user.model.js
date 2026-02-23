@@ -19,8 +19,12 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['ADMIN', 'USER'],
+        enum: ['ADMIN', 'USER', 'VIP'],
         default: 'USER'
+    },
+    aiLimit: {
+        date: { type: String, default: null },
+        count: { type: Number, default: 0 }
     },
     status: {
         type: String,
