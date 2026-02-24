@@ -7,6 +7,7 @@ import { initTheme } from '../utils/theme';
 interface AuthContextType extends AuthState {
   login: (user: User, _accessToken?: string, _refreshToken?: string) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   setTokens?: (accessToken: string, refreshToken: string) => void;
 }
 
@@ -58,12 +59,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isAuthenticated: true,
       isLoading: false,
     });
-    // Apply VIP theme on login if user is VIP
     initTheme(user.role === 'VIP');
   };
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await authService.getMe();
+      if (res.success && res.data) {
+        setAuthUserCookie(res.data);
+        setState({ user: res.data, isAuthenticated: true, isLoading: false });
+        initTheme(res.data.role === 'VIP');
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout }}>
+    <AuthContext.Provider value={{ ...state, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

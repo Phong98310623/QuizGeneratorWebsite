@@ -1,15 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { paymentApi } from '../services/api';
+import { paymentApi, VipPricing } from '../services/api';
 
 const PaymentPage: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
   const [selectedMethod, setSelectedMethod] = useState<'payos' | 'transfer' | null>(null);
   const [loading, setLoading] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [transactionInfo, setTransactionContent] = useState<{ content: string; amount: number } | null>(null);
+  const [pricing, setPricing] = useState<VipPricing | null>(null);
+
+  useEffect(() => {
+    paymentApi.getVipPricing().then(setPricing).catch(() => {});
+  }, []);
+
+  const payosPrice = pricing?.payosPrice ?? 100000;
+  const transferPrice = pricing?.transferPrice ?? 95000;
+  const packageName = pricing?.packageName ?? 'VIP Pro';
+  const duration = pricing?.duration ?? 'Vinh vien';
+  const discount = payosPrice - transferPrice;
+
+  const formatPrice = (n: number) => n.toLocaleString('vi-VN');
 
   const handlePayment = async () => {
     if (!selectedMethod) return;
@@ -17,16 +28,19 @@ const PaymentPage: React.FC = () => {
     
     try {
       if (selectedMethod === 'payos') {
-        // Giả lập PayOS
-        setTimeout(() => {
-          setLoading(false);
-          alert('Đang chuyển hướng đến cổng thanh toán PayOS...');
-          navigate('/profile');
-        }, 2000);
+        const res = await paymentApi.requestPin(null as any, payosPrice, 'PAYOS');
+        
+        if (res.checkoutUrl) {
+          if (res.orderCode) {
+            localStorage.setItem('payos_order_code', String(res.orderCode));
+          }
+          window.location.href = res.checkoutUrl;
+          return;
+        } else {
+          throw new Error('Lỗi: Backend không trả về checkoutUrl');
+        }
       } else {
-        // Chuyển khoản ngân hàng - Gọi API xin PIN
-        const amount = 95000;
-        const res = await paymentApi.requestPin(null as any, amount, 'TRANSFER');
+        const res = await paymentApi.requestPin(null as any, transferPrice, 'TRANSFER');
         setTransactionContent({
           content: res.transactionContent,
           amount: res.amount
@@ -81,10 +95,10 @@ const PaymentPage: React.FC = () => {
           <div className="lg:col-span-1 order-2 lg:order-1">
             <div className="bg-white rounded-3xl shadow-sm border border-neutral-200 overflow-hidden sticky top-8">
               <div className="p-6 bg-gradient-to-br from-primary-600 to-violet-700 text-white">
-                <h3 className="text-xl font-bold mb-1">Gói VIP Pro</h3>
-                <p className="text-primary-100 text-sm">Thời hạn: Vĩnh viễn</p>
+                <h3 className="text-xl font-bold mb-1">Gói {packageName}</h3>
+                <p className="text-primary-100 text-sm">Thời hạn: {duration}</p>
                 <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-3xl font-black">100.000</span>
+                  <span className="text-3xl font-black">{formatPrice(payosPrice)}</span>
                   <span className="text-lg font-medium opacity-80">VNĐ</span>
                 </div>
               </div>
@@ -125,7 +139,7 @@ const PaymentPage: React.FC = () => {
                 </div>
                 <div className="pt-4 border-t border-neutral-100 flex justify-between items-center text-sm font-bold text-neutral-800 uppercase tracking-tighter">
                   <span>Tổng cộng</span>
-                  <span className="text-primary-600">100.000 VNĐ</span>
+                  <span className="text-primary-600">{formatPrice(payosPrice)} VNĐ</span>
                 </div>
               </div>
             </div>
@@ -186,7 +200,7 @@ const PaymentPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-bold text-neutral-800">Chuyển khoản ngân hàng</p>
-                      <p className="text-xs text-neutral-500">Xác nhận thủ công (Giảm thêm 5.000đ)</p>
+                      <p className="text-xs text-neutral-500">Xác nhận thủ công{discount > 0 ? ` (Giảm ${formatPrice(discount)}đ)` : ''}</p>
                     </div>
                   </div>
                   {selectedMethod === 'transfer' && (
@@ -215,7 +229,7 @@ const PaymentPage: React.FC = () => {
                       <span>Đang kết nối...</span>
                     </div>
                   ) : (
-                    `Thanh toán ${selectedMethod === 'transfer' ? '95.000' : '100.000'} VNĐ`
+                    `Thanh toán ${formatPrice(selectedMethod === 'transfer' ? transferPrice : payosPrice)} VNĐ`
                   )}
                 </button>
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-neutral-400 font-medium italic">
@@ -229,7 +243,7 @@ const PaymentPage: React.FC = () => {
           </div>
         </div>
       </div>
-
+      
       {/* QR Modal for Bank Transfer */}
       {showQrModal && transactionInfo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

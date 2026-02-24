@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { paymentApi } from '../services/api';
 import ProfileInfo from '../components/profile/ProfileInfo';
 import ChangePassword from '../components/profile/ChangePassword';
 import FavoriteQuestions from '../components/profile/FavoriteQuestions';
@@ -8,7 +9,23 @@ import Collections from '../components/profile/Collections';
 import ActivityHistory from '../components/profile/ActivityHistory';
 
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+
+  useEffect(() => {
+    const orderCode = localStorage.getItem('payos_order_code');
+    if (!orderCode) return;
+    localStorage.removeItem('payos_order_code');
+
+    (async () => {
+      const res = await paymentApi.verifyPayOS(null as any, Number(orderCode));
+      if (res.success && res.data?.completed) {
+        await refreshUser();
+        alert('Thanh toán thành công! Tài khoản đã được nâng cấp VIP.');
+      } else if (res.success && !res.data?.completed) {
+        alert('Thanh toán chưa hoàn tất hoặc đã bị hủy.');
+      }
+    })();
+  }, [refreshUser]);
 
   if (!user) return null;
 

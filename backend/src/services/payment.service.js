@@ -1,5 +1,6 @@
 const Payment = require('../models/payment.model');
 const notificationService = require('./notification.service');
+const payOS = require('../config/payos.config');
 
 const generateUniquePin = async () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -21,6 +22,11 @@ const generateUniquePin = async () => {
     return `VIP-${pin}`;
 };
 
+const getVipPrice = (method) => {
+    if (method === 'PAYOS') return Number(process.env.VIP_PRICE_PAYOS) || 100000;
+    return Number(process.env.VIP_PRICE_TRANSFER) || 95000;
+};
+
 const createPaymentRequest = async (userId, amount, method) => {
     const transactionContent = await generateUniquePin();
     
@@ -33,6 +39,52 @@ const createPaymentRequest = async (userId, amount, method) => {
     });
     
     await payment.save();
+
+    if (method === 'PAYOS') {
+        const orderId = Number(String(Date.now()).slice(-9));
+        const payosDescription = 'Nang cap VIP Pro';
+        const body = {
+            orderCode: orderId,
+            amount: amount,
+            description: payosDescription,
+            items: [
+                {
+                    name: "Goi VIP Pro",
+                    quantity: 1,
+                    price: amount,
+                },
+            ],
+            returnUrl: process.env.PAYOS_RETURN_URL || "http://localhost:3000/profile",
+            cancelUrl: process.env.PAYOS_CANCEL_URL || "http://localhost:3000/payment",
+        };
+
+        try {
+            const paymentLinkResponse = await payOS.paymentRequests.create(body);
+            payment.orderCode = orderId;
+            payment.checkoutUrl = paymentLinkResponse.checkoutUrl;
+            await payment.save();
+            return payment;
+        } catch (error) {
+            console.error('PayOS create error:', error);
+            throw error;
+        }
+    }
+
+    return payment;
+};
+
+const handlePayOSWebhook = async (webhookData) => {
+    const { orderCode, status } = webhookData;
+    const payment = await Payment.findOne({ orderCode });
+    if (!payment) {
+        throw new Error('Không tìm thấy thông tin thanh toán cho orderCode: ' + orderCode);
+    }
+
+    if (status === 'PAID') {
+        return await updatePaymentStatus(payment._id, 'COMPLETED');
+    } else if (status === 'CANCELLED') {
+        return await updatePaymentStatus(payment._id, 'CANCELLED');
+    }
     return payment;
 };
 
@@ -79,6 +131,26 @@ const updatePaymentStatus = async (paymentId, status, adminId = null) => {
     return payment;
 };
 
+const verifyPayOSPayment = async (userId, orderCode) => {
+    const payment = await Payment.findOne({ userId, orderCode, method: 'PAYOS' });
+    if (!payment) {
+        throw new Error('Không tìm thấy giao dịch PayOS');
+    }
+    if (payment.status === 'COMPLETED') {
+        return payment;
+    }
+
+    const payosData = await payOS.paymentRequests.get(orderCode);
+
+    if (payosData.status === 'PAID' && payment.status !== 'COMPLETED') {
+        return await updatePaymentStatus(payment._id, 'COMPLETED');
+    } else if (payosData.status === 'CANCELLED' && payment.status !== 'CANCELLED') {
+        return await updatePaymentStatus(payment._id, 'CANCELLED');
+    }
+
+    return payment;
+};
+
 const confirmTransfer = async (userId, transactionContent) => {
     const payment = await Payment.findOne({ userId, transactionContent, status: 'PENDING' });
     if (!payment) {
@@ -111,6 +183,8 @@ const getAllPayments = async (query = {}) => {
 
 module.exports = {
     createPaymentRequest,
+    handlePayOSWebhook,
+    verifyPayOSPayment,
     updatePaymentStatus,
     confirmTransfer,
     getAllPayments

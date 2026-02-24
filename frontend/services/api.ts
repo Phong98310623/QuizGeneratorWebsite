@@ -1,6 +1,7 @@
 import { User, ApiResponse } from '../types';
 
 const API_BASE_URL = process.env.API_BASE_URL || "";
+console.log('--- API_BASE_URL initialized as:', API_BASE_URL);
 
 const AUTH_USER_COOKIE = "auth_user";
 const COOKIE_MAX_AGE_DAYS = 30;
@@ -52,24 +53,33 @@ const defaultCredentials: RequestCredentials = "include";
 
 /** Gọi API với cookie (credentials: include); 401 thì thử refresh (cookie) rồi gửi lại. */
 async function fetchWithAuth(url: string, options: RequestInit, _token?: string | null): Promise<Response> {
-  let res = await fetch(url, {
-    ...options,
-    credentials: defaultCredentials,
-    headers: options?.headers,
-  });
-  if (res.status !== 401) return res;
+  console.log(`--- fetchWithAuth: ${options.method || 'GET'} ${url}`);
+  try {
+    let res = await fetch(url, {
+      ...options,
+      credentials: defaultCredentials,
+      headers: options?.headers,
+    });
+    console.log(`--- fetchWithAuth status: ${res.status}`);
+    if (res.status !== 401) return res;
 
-  const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-    method: "POST",
-    credentials: defaultCredentials,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-  if (!refreshRes.ok) {
-    onUnauthorized?.();
-    return res;
+    console.log(`--- fetchWithAuth 401, attempting refresh`);
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: "POST",
+      credentials: defaultCredentials,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    console.log(`--- refresh status: ${refreshRes.status}`);
+    if (!refreshRes.ok) {
+      onUnauthorized?.();
+      return res;
+    }
+    return fetch(url, { ...options, credentials: defaultCredentials, headers: options?.headers });
+  } catch (error) {
+    console.error('--- fetchWithAuth error:', error);
+    throw error;
   }
-  return fetch(url, { ...options, credentials: defaultCredentials, headers: options?.headers });
 }
 
 /** Map backend user response to frontend User */
@@ -178,6 +188,18 @@ export const authService = {
 
   logout: async (): Promise<void> => {
     await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+  },
+
+  getMe: async (): Promise<ApiResponse<User>> => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/api/auth/me`, { headers: {} });
+      const result = await parseResponse(response);
+      if (!response.ok) return { success: false, error: parseError(result) };
+      const raw = (result as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+      return { success: true, data: mapBackendUser(raw ?? {}) };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Không thể kết nối đến server' };
+    }
   },
 
   updateProfile: async (token: string, data: { username?: string; avatar?: string | null }): Promise<ApiResponse<User>> => {
@@ -578,8 +600,22 @@ export const setsApi = {
   },
 };
 
+export interface VipPricing {
+  payosPrice: number;
+  transferPrice: number;
+  packageName: string;
+  duration: string;
+}
+
 export const paymentApi = {
-  requestPin: async (token: string, amount: number, method: 'PAYOS' | 'TRANSFER'): Promise<{ transactionContent: string; amount: number; method: string }> => {
+  getVipPricing: async (): Promise<VipPricing> => {
+    const response = await fetch(`${API_BASE_URL}/api/payment/vip-pricing`, { credentials: 'include' });
+    const data = await response.json();
+    if (!response.ok) throw new Error('Lỗi khi tải thông tin giá');
+    return (data as { success: boolean; data: VipPricing }).data;
+  },
+
+  requestPin: async (token: string, amount: number, method: 'PAYOS' | 'TRANSFER'): Promise<{ transactionContent: string; amount: number; method: string; checkoutUrl?: string; orderCode?: number }> => {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/api/payment/request-pin`,
       {
@@ -592,6 +628,25 @@ export const paymentApi = {
     const data = await response.json();
     if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi yêu cầu mã thanh toán');
     return (data as { success: boolean; data: any }).data;
+  },
+
+  verifyPayOS: async (token: string, orderCode: number): Promise<{ success: boolean; data?: { status: string; completed: boolean }; error?: string }> => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/payment/verify-payos`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderCode }),
+        },
+        token
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error((data as { message?: string }).message || 'Lỗi khi xác minh thanh toán');
+      return { success: true, data: (data as any).data };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Lỗi kết nối' };
+    }
   },
 
   confirmTransfer: async (token: string, transactionContent: string): Promise<ApiResponse<any>> => {

@@ -25,6 +25,14 @@ const paymentSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    orderCode: {
+        type: Number,
+        unique: true,
+        sparse: true
+    },
+    checkoutUrl: {
+        type: String
+    },
     packageInfo: {
         type: String,
         default: 'VIP Pro Lifetime'
