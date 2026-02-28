@@ -118,10 +118,10 @@ const ExplorePage: React.FC = () => {
                 className="w-full pl-12 pr-10 py-4 rounded-2xl border border-neutral-200 bg-white focus:ring-4 focus:ring-primary-100 focus:border-primary-400 transition-all font-medium appearance-none"
               >
                 <option value="">Tất cả thể loại</option>
-                <option value="Technical">Lập trình</option>
-                <option value="Academic">Học tập</option>
-                <option value="Geography">Địa lý</option>
-                <option value="Business">Kinh doanh</option>
+                <option value="Technical">Kỹ thuật / Công nghệ</option>
+                <option value="Academic">Học thuật / Giáo dục</option>
+                <option value="Geography">Địa lý / Lịch sử</option>
+                <option value="Business">Kinh doanh / Tài chính</option>
                 <option value="Other">Khác</option>
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={18} />
@@ -178,7 +178,7 @@ const ExplorePage: React.FC = () => {
                   {/* Category Tag */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="px-3 py-1 bg-primary-50 text-primary-700 text-[10px] font-black uppercase tracking-widest rounded-full border border-primary-100">
-                      {s.type || 'Other'}
+                      {s.type === 'Technical' ? 'KỸ THUẬT' : s.type === 'Academic' ? 'HỌC THUẬT' : s.type === 'Geography' ? 'ĐỊA LÝ' : s.type === 'Business' ? 'KINH DOANH' : 'KHÁC'}
                     </span>
                     <div className="flex items-center gap-1 text-neutral-400 font-bold text-[10px]">
                       <Layers size={12} /> {s.count} CÂU

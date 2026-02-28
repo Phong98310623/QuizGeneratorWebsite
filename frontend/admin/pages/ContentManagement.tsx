@@ -118,14 +118,14 @@ const ContentManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Content Manager</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Quản lý Nội dung</h1>
           <p className="text-slate-500 mt-1">
-            Curate questions, sets, and educational material.
+            Quản lý câu hỏi, bộ câu hỏi và tài liệu học tập.
           </p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
           <Plus size={20} />
-          Create New Set
+          Tạo Bộ câu hỏi mới
         </button>
       </div>
 
@@ -148,7 +148,7 @@ const ContentManagement: React.FC = () => {
             <FileText size={24} />
           </div>
           <div>
-            <p className="text-slate-500 text-sm font-medium">Total Questions</p>
+            <p className="text-slate-500 text-sm font-medium">Tổng số câu hỏi</p>
             <h3 className="text-2xl font-bold text-slate-900">{stats.totalQuestions}</h3>
           </div>
         </div>
@@ -157,7 +157,7 @@ const ContentManagement: React.FC = () => {
             <Layers size={24} />
           </div>
           <div>
-            <p className="text-slate-500 text-sm font-medium">Question Sets</p>
+            <p className="text-slate-500 text-sm font-medium">Bộ câu hỏi</p>
             <h3 className="text-2xl font-bold text-slate-900">{stats.totalSets}</h3>
           </div>
         </div>
@@ -166,7 +166,7 @@ const ContentManagement: React.FC = () => {
             <BookOpen size={24} />
           </div>
           <div>
-            <p className="text-slate-500 text-sm font-medium">Verified Sets</p>
+            <p className="text-slate-500 text-sm font-medium">Bộ câu hỏi đã duyệt</p>
             <h3 className="text-2xl font-bold text-slate-900">{stats.verifiedSets}</h3>
           </div>
         </div>
@@ -183,7 +183,7 @@ const ContentManagement: React.FC = () => {
                   : 'text-slate-600 hover:bg-slate-50 border-transparent'
               }`}
             >
-              Question Sets
+              Bộ câu hỏi
             </button>
             <button
               onClick={() => setActiveTab('questions')}
@@ -193,7 +193,7 @@ const ContentManagement: React.FC = () => {
                   : 'text-slate-600 hover:bg-slate-50 border-transparent'
               }`}
             >
-              Individual Questions
+              Câu hỏi riêng lẻ
             </button>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
@@ -204,7 +204,7 @@ const ContentManagement: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder="Search content..."
+                placeholder="Tìm kiếm nội dung..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm w-full outline-none focus:ring-2 focus:ring-indigo-500"
@@ -245,7 +245,7 @@ const ContentManagement: React.FC = () => {
                     <p className="text-xs text-slate-500 mt-2 line-clamp-2">{set.description || '—'}</p>
                     <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
                       <span className="text-xs text-slate-400">
-                        {set.verified ? '✓ Verified' : 'Chưa verify'}
+                        {set.verified ? '✓ Đã duyệt' : 'Chưa duyệt'}
                       </span>
                       <button
                         className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -292,7 +292,7 @@ const ContentManagement: React.FC = () => {
                         </span>
                       ))}
                       <span className="text-xs text-slate-400 ml-auto">
-                        {q.difficulty} · {q.usedCount} used
+                        {q.difficulty} · {q.usedCount} đã dùng
                       </span>
                     </div>
                   </div>

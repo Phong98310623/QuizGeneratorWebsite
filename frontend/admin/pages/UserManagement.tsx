@@ -22,7 +22,7 @@ const UserManagement: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       if (!isAuthenticated) {
-        setError('Authentication required');
+        setError('Yêu cầu xác thực');
         setLoading(false);
         return;
       }
@@ -33,7 +33,7 @@ const UserManagement: React.FC = () => {
         const list = await adminApi.getAllUsers();
         setUsers(list);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching users');
+        setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi tải danh sách người dùng');
         console.error('Error fetching users:', err);
       } finally {
         setLoading(false);
@@ -55,7 +55,7 @@ const UserManagement: React.FC = () => {
 
   const toggleStatus = async (id: string, newStatus: string, reason: string = '') => {
       if (!isAuthenticated) {
-        setError('Authentication required');
+        setError('Yêu cầu xác thực');
       return;
     }
 
@@ -72,7 +72,7 @@ const UserManagement: React.FC = () => {
         setBlockReason('');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while updating user status');
+      setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi cập nhật trạng thái người dùng');
       console.error('Error updating user status:', err);
     } finally {
       setIsUpdating(false);
@@ -82,7 +82,7 @@ const UserManagement: React.FC = () => {
   const handleConfirmBlock = () => {
     if (!selectedUser) return;
     if (!blockReason.trim()) {
-      setError('Please provide a reason for blocking this user');
+      setError('Vui lòng cung cấp lý do khóa người dùng này');
       return;
     }
     toggleStatus(selectedUser.id, 'BANNED', blockReason.trim());
@@ -98,15 +98,15 @@ const UserManagement: React.FC = () => {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
-          <p className="text-slate-500 mt-1">Manage platform users, roles, and account permissions.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Quản lý Người dùng</h1>
+          <p className="text-slate-500 mt-1">Quản lý người dùng nền tảng, vai trò và quyền truy cập tài khoản.</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="Tìm kiếm người dùng..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-full md:w-64"
@@ -135,18 +135,18 @@ const UserManagement: React.FC = () => {
             <table className="w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">User</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Role</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Joined</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase text-right">Actions</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Người dùng</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Vai trò</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Trạng thái</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Ngày tham gia</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                      {searchTerm ? 'No users found matching your search.' : 'No users found.'}
+                      {searchTerm ? 'Không tìm thấy người dùng nào phù hợp với tìm kiếm.' : 'Không tìm thấy người dùng nào.'}
                     </td>
                   </tr>
                 ) : (
@@ -234,7 +234,7 @@ const UserManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-slate-900">Block User</h3>
+              <h3 className="text-xl font-bold text-slate-900">Khóa Người dùng</h3>
               <button
                 onClick={() => {
                   setShowBlockModal(false);
@@ -249,7 +249,7 @@ const UserManagement: React.FC = () => {
             </div>
 
             <div className="mb-4">
-              <p className="text-sm text-slate-600 mb-2">You are about to block the following user:</p>
+              <p className="text-sm text-slate-600 mb-2">Bạn sắp khóa người dùng sau:</p>
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="font-semibold text-slate-900">{selectedUser.fullName}</p>
                 <p className="text-xs text-slate-500">{selectedUser.email}</p>
@@ -258,12 +258,12 @@ const UserManagement: React.FC = () => {
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Reason for blocking <span className="text-rose-500">*</span>
+                Lý do khóa <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
-                placeholder="Enter the reason for blocking this user..."
+                placeholder="Nhập lý do khóa người dùng này..."
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
                 rows={4}
               />
@@ -286,7 +286,7 @@ const UserManagement: React.FC = () => {
                 disabled={isUpdating}
                 className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={handleConfirmBlock}
@@ -296,10 +296,10 @@ const UserManagement: React.FC = () => {
                 {isUpdating ? (
                   <>
                     <Loader2 className="animate-spin" size={16} />
-                    Blocking...
+                    Đang khóa...
                   </>
                 ) : (
-                  'Confirm Block'
+                  'Xác nhận Khóa'
                 )}
               </button>
             </div>

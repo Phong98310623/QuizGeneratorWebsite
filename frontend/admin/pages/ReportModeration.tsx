@@ -180,10 +180,15 @@ const ReportModeration: React.FC = () => {
       MEDIUM: 'bg-amber-100 text-amber-700',
       LOW: 'bg-slate-100 text-slate-600',
     };
+    const labels = {
+      HIGH: 'CAO',
+      MEDIUM: 'TRUNG BÌNH',
+      LOW: 'THẤP',
+    };
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${styles[p]}`}>
         {p === 'HIGH' && <ShieldAlert size={10} />}
-        {p}
+        {labels[p]}
       </span>
     );
   };
@@ -194,12 +199,17 @@ const ReportModeration: React.FC = () => {
       RESOLVED: 'bg-emerald-100 text-emerald-700',
       DISMISSED: 'bg-slate-100 text-slate-600',
     };
+    const labels = {
+      PENDING: 'ĐANG CHỜ',
+      RESOLVED: 'ĐÃ GIẢI QUYẾT',
+      DISMISSED: 'ĐÃ BỎ QUA',
+    };
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${styles[s]}`}>
         {s === 'PENDING' && <Clock size={10} />}
         {s === 'RESOLVED' && <CheckCircle size={10} />}
         {s === 'DISMISSED' && <XCircle size={10} />}
-        {s}
+        {labels[s]}
       </span>
     );
   };
@@ -216,9 +226,9 @@ const ReportModeration: React.FC = () => {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Report Moderation</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Điều phối Báo cáo</h1>
           <p className="text-slate-500 mt-1">
-            Review and resolve user reports for content, quizzes, and accounts.
+            Xem xét và giải quyết các báo cáo từ người dùng về nội dung, bộ câu hỏi và tài khoản.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -226,7 +236,7 @@ const ReportModeration: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="Search reports..."
+              placeholder="Tìm kiếm báo cáo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-full md:w-56"
@@ -238,25 +248,29 @@ const ReportModeration: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50"
             >
               <Filter size={16} />
-              {statusFilter === 'ALL' ? 'Status' : statusFilter}
+              {statusFilter === 'ALL' ? 'Trạng thái' : statusFilter === 'PENDING' ? 'ĐANG CHỜ' : statusFilter === 'RESOLVED' ? 'ĐÃ GIẢI QUYẾT' : 'ĐÃ BỎ QUA'}
               <ChevronDown size={14} />
             </button>
             {showStatusDropdown && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)} />
                 <div className="absolute right-0 mt-1 w-40 py-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20">
-                  {(['ALL', 'PENDING', 'RESOLVED', 'DISMISSED'] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setStatusFilter(s);
-                        setShowStatusDropdown(false);
-                      }}
-                      className={`block w-full text-left px-4 py-2 text-sm ${statusFilter === s ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => { setStatusFilter('ALL'); setShowStatusDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${statusFilter === 'ALL' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Tất cả</button>
+                  <button
+                    onClick={() => { setStatusFilter('PENDING'); setShowStatusDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${statusFilter === 'PENDING' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Đang chờ</button>
+                  <button
+                    onClick={() => { setStatusFilter('RESOLVED'); setShowStatusDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${statusFilter === 'RESOLVED' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Đã giải quyết</button>
+                  <button
+                    onClick={() => { setStatusFilter('DISMISSED'); setShowStatusDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${statusFilter === 'DISMISSED' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Đã bỏ qua</button>
                 </div>
               </>
             )}
@@ -266,25 +280,33 @@ const ReportModeration: React.FC = () => {
               onClick={() => setShowTypeDropdown((v) => !v)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50"
             >
-              Type: {typeFilter === 'ALL' ? 'All' : typeFilter}
+              Loại: {typeFilter === 'ALL' ? 'Tất cả' : typeFilter === 'USER' ? 'Người dùng' : typeFilter === 'QUIZ' ? 'Bộ câu hỏi' : typeFilter === 'CONTENT' ? 'Nội dung' : 'Khác'}
               <ChevronDown size={14} />
             </button>
             {showTypeDropdown && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowTypeDropdown(false)} />
                 <div className="absolute right-0 mt-1 w-36 py-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20">
-                  {(['ALL', 'USER', 'QUIZ', 'CONTENT', 'OTHER'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => {
-                        setTypeFilter(t);
-                        setShowTypeDropdown(false);
-                      }}
-                      className={`block w-full text-left px-4 py-2 text-sm ${typeFilter === t ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => { setTypeFilter('ALL'); setShowTypeDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${typeFilter === 'ALL' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Tất cả</button>
+                  <button
+                    onClick={() => { setTypeFilter('USER'); setShowTypeDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${typeFilter === 'USER' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Người dùng</button>
+                  <button
+                    onClick={() => { setTypeFilter('QUIZ'); setShowTypeDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${typeFilter === 'QUIZ' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Bộ câu hỏi</button>
+                  <button
+                    onClick={() => { setTypeFilter('CONTENT'); setShowTypeDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${typeFilter === 'CONTENT' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Nội dung</button>
+                  <button
+                    onClick={() => { setTypeFilter('OTHER'); setShowTypeDropdown(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${typeFilter === 'OTHER' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >Khác</button>
                 </div>
               </>
             )}
@@ -311,7 +333,7 @@ const ReportModeration: React.FC = () => {
             <Clock size={24} />
           </div>
           <div>
-            <p className="text-amber-800 text-sm font-semibold uppercase tracking-wider">Pending</p>
+            <p className="text-amber-800 text-sm font-semibold uppercase tracking-wider">Đang chờ</p>
             <h4 className="text-2xl font-bold text-amber-900">{stats.pending}</h4>
           </div>
         </div>
@@ -320,7 +342,7 @@ const ReportModeration: React.FC = () => {
             <CheckCircle size={24} />
           </div>
           <div>
-            <p className="text-emerald-800 text-sm font-semibold uppercase tracking-wider">Resolved</p>
+            <p className="text-emerald-800 text-sm font-semibold uppercase tracking-wider">Đã giải quyết</p>
             <h4 className="text-2xl font-bold text-emerald-900">{stats.resolved}</h4>
           </div>
         </div>
@@ -329,7 +351,7 @@ const ReportModeration: React.FC = () => {
             <ShieldAlert size={24} />
           </div>
           <div>
-            <p className="text-rose-800 text-sm font-semibold uppercase tracking-wider">High priority</p>
+            <p className="text-rose-800 text-sm font-semibold uppercase tracking-wider">Ưu tiên cao</p>
             <h4 className="text-2xl font-bold text-rose-900">{stats.highPriority}</h4>
           </div>
         </div>
@@ -340,13 +362,13 @@ const ReportModeration: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reporter / Reported</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reason</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Priority</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Người báo cáo / Bị báo cáo</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Loại</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lý do</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ưu tiên</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ngày</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -354,8 +376,8 @@ const ReportModeration: React.FC = () => {
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                     {searchTerm || statusFilter !== 'ALL' || typeFilter !== 'ALL'
-                      ? 'No reports match your filters.'
-                      : 'No reports yet.'}
+                      ? 'Không có báo cáo nào khớp với bộ lọc.'
+                      : 'Chưa có báo cáo nào.'}
                   </td>
                 </tr>
               ) : (
@@ -422,14 +444,14 @@ const ReportModeration: React.FC = () => {
                               onClick={() => handleResolve(report.id)}
                               disabled={isResolving}
                               className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Resolve"
+                              title="Giải quyết"
                             >
                               <CheckCircle size={18} />
                             </button>
                             <button
                               onClick={() => handleDismiss(report.id)}
                               className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                              title="Dismiss"
+                              title="Bỏ qua"
                             >
                               <XCircle size={18} />
                             </button>
@@ -449,7 +471,7 @@ const ReportModeration: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">Report details</h3>
+              <h3 className="text-lg font-bold text-slate-900">Chi tiết báo cáo</h3>
               <button
                 onClick={() => setSelectedReport(null)}
                 className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"
@@ -459,12 +481,12 @@ const ReportModeration: React.FC = () => {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Reporter</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Người báo cáo</p>
                 <p className="font-medium text-slate-900">{selectedReport.reporterName}</p>
                 <p className="text-sm text-slate-500">{selectedReport.reporterEmail}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Reported</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Bị báo cáo</p>
                 <p className="font-medium text-slate-900">{selectedReport.reportedEntityTitle}</p>
                 <p className="text-sm text-slate-500">{selectedReport.reportedEntityType} · {selectedReport.reportedEntityId}</p>
                 {selectedReport.reportedEntityType !== 'OTHER' && (
@@ -482,12 +504,12 @@ const ReportModeration: React.FC = () => {
                 )}
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Reason</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Lý do</p>
                 <p className="text-slate-700">{selectedReport.reason}</p>
               </div>
               {selectedReport.description && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Description</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Mô tả</p>
                   <p className="text-slate-600 text-sm bg-slate-50 rounded-xl p-3">{selectedReport.description}</p>
                 </div>
               )}
@@ -497,8 +519,8 @@ const ReportModeration: React.FC = () => {
               </div>
               {selectedReport.resolvedAt && (
                 <div className="pt-2 border-t border-slate-100 text-sm text-slate-500">
-                  Resolved {new Date(selectedReport.resolvedAt).toLocaleString('vi-VN')}
-                  {selectedReport.resolvedBy && ` by ${selectedReport.resolvedBy}`}
+                  Đã giải quyết {new Date(selectedReport.resolvedAt).toLocaleString('vi-VN')}
+                  {selectedReport.resolvedBy && ` bởi ${selectedReport.resolvedBy}`}
                 </div>
               )}
             </div>
@@ -510,14 +532,14 @@ const ReportModeration: React.FC = () => {
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {isResolving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                  Resolve
+                  Giải quyết
                 </button>
                 <button
                   onClick={() => handleDismiss(selectedReport.id)}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 text-slate-600 rounded-xl font-medium hover:bg-slate-50"
                 >
                   <XCircle size={18} />
-                  Dismiss
+                  Bỏ qua
                 </button>
               </div>
             )}

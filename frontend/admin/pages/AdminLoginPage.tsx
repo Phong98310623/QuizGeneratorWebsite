@@ -41,8 +41,8 @@ const AdminLoginPage: React.FC = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4 shadow-lg">
             <Lock className="text-white" size={32} />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Admin Portal</h1>
-          <p className="text-slate-600">Sign in to access the admin dashboard</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Trang Quản trị</h1>
+          <p className="text-slate-600">Đăng nhập để truy cập bảng điều khiển admin</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
@@ -77,7 +77,7 @@ const AdminLoginPage: React.FC = () => {
 
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-slate-700 mb-2">
-                Password
+                Mật khẩu
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -90,7 +90,7 @@ const AdminLoginPage: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-slate-50 focus:bg-white"
-                  placeholder="Enter your password"
+                  placeholder="Nhập mật khẩu"
                   disabled={loading}
                 />
               </div>
@@ -104,17 +104,17 @@ const AdminLoginPage: React.FC = () => {
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />
-                  <span>Signing in...</span>
+                  <span>Đang đăng nhập...</span>
                 </>
               ) : (
-                <span>Sign In</span>
+                <span>Đăng nhập</span>
               )}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-xs text-slate-500">
-              Only authorized administrators can access this portal
+              Chỉ những quản trị viên được ủy quyền mới có thể truy cập trang này
             </p>
           </div>
         </div>

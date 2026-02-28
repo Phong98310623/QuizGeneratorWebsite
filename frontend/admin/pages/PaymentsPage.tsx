@@ -55,13 +55,13 @@ const PaymentsPage: React.FC = () => {
     switch (status) {
       case 'APPROVED':
       case 'COMPLETED':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700"><CheckCircle size={12} /> {status}</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700"><CheckCircle size={12} /> ĐÃ DUYỆT</span>;
       case 'CANCELLED':
       case 'REJECTED':
       case 'FAILED':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-700"><XCircle size={12} /> {status}</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-700"><XCircle size={12} /> ĐÃ HỦY</span>;
       case 'REVIEW':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 font-bold animate-pulse"><Clock size={12} /> Đang chờ duyệt</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 font-bold animate-pulse"><Clock size={12} /> ĐANG CHỜ DUYỆT</span>;
       default:
         return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700"><Clock size={12} /> {status}</span>;
     }
@@ -150,7 +150,7 @@ const PaymentsPage: React.FC = () => {
                           <p className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded inline-block">
                             {payment.transactionContent}
                           </p>
-                          <p className="text-[10px] text-slate-400 mt-1 uppercase font-semibold">{payment.method}</p>
+                          <p className="text-[10px] text-slate-400 mt-1 uppercase font-semibold">{payment.method === 'BANK_TRANSFER' ? 'CHUYỂN KHOẢN' : payment.method}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">

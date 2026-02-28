@@ -157,11 +157,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20} /> },
-    { name: 'User Directory', path: '/admin/users', icon: <Users size={20} /> },
-    { name: 'Blacklist', path: '/admin/blacklist', icon: <UserX size={20} /> },
-    { name: 'Report Queue', path: '/admin/reports', icon: <Flag size={20} /> },
-    { name: 'Payments', path: '/admin/payments', icon: <CreditCard size={20} /> },
-    { name: 'Content Manager', path: '/admin/content', icon: <BookOpen size={20} /> },
+    { name: 'Quản lý Người dùng', path: '/admin/users', icon: <Users size={20} /> },
+    { name: 'Danh sách đen', path: '/admin/blacklist', icon: <UserX size={20} /> },
+    { name: 'Hàng đợi Báo cáo', path: '/admin/reports', icon: <Flag size={20} /> },
+    { name: 'Thanh toán', path: '/admin/payments', icon: <CreditCard size={20} /> },
+    { name: 'Quản lý Nội dung', path: '/admin/content', icon: <BookOpen size={20} /> },
   ];
 
   return (
@@ -215,7 +215,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }`}
           >
             <LogOut size={20} />
-            {isSidebarOpen && <span className="font-medium text-sm">Logout</span>}
+            {isSidebarOpen && <span className="font-medium text-sm">Đăng xuất</span>}
           </button>
         </div>
       </aside>
@@ -233,7 +233,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Search size={16} className="text-slate-400 mr-2" />
               <input
                 type="text"
-                placeholder="Search everything..."
+                placeholder="Tìm kiếm mọi thứ..."
                 className="bg-transparent border-none text-sm focus:ring-0 w-full"
               />
             </div>

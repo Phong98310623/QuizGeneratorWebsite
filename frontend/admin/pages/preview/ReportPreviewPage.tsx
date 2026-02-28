@@ -170,10 +170,15 @@ const ReportPreviewPage: React.FC = () => {
       MEDIUM: 'bg-amber-100 text-amber-700',
       LOW: 'bg-slate-100 text-slate-600',
     };
+    const labels = {
+      HIGH: 'CAO',
+      MEDIUM: 'TRUNG BÌNH',
+      LOW: 'THẤP',
+    };
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${styles[p]}`}>
         {p === 'HIGH' && <ShieldAlert size={10} />}
-        {p}
+        {labels[p]}
       </span>
     );
   };
@@ -184,12 +189,17 @@ const ReportPreviewPage: React.FC = () => {
       RESOLVED: 'bg-emerald-100 text-emerald-700',
       DISMISSED: 'bg-slate-100 text-slate-600',
     };
+    const labels = {
+      PENDING: 'ĐANG CHỜ',
+      RESOLVED: 'ĐÃ GIẢI QUYẾT',
+      DISMISSED: 'ĐÃ BỎ QUA',
+    };
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${styles[s]}`}>
         {s === 'PENDING' && <Clock size={10} />}
         {s === 'RESOLVED' && <CheckCircle size={10} />}
         {s === 'DISMISSED' && <XCircle size={10} />}
-        {s}
+        {labels[s]}
       </span>
     );
   };
@@ -251,7 +261,7 @@ const ReportPreviewPage: React.FC = () => {
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
               >
                 {updating ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                Resolve
+                Giải quyết
               </button>
               <button
                 onClick={handleDismiss}
@@ -259,7 +269,7 @@ const ReportPreviewPage: React.FC = () => {
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 <XCircle size={16} />
-                Dismiss
+                Bỏ qua
               </button>
             </>
           )}

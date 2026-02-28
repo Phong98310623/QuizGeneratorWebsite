@@ -15,7 +15,7 @@ const Blacklist: React.FC = () => {
   useEffect(() => {
     const fetchBlacklistedUsers = async () => {
       if (!isAuthenticated) {
-        setError('Authentication required');
+        setError('Yêu cầu xác thực');
         setLoading(false);
         return;
       }
@@ -28,7 +28,7 @@ const Blacklist: React.FC = () => {
         const blocked = allUsers.filter((u) => u.status === 'BANNED');
         setUsers(blocked);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching blacklist');
+        setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi tải danh sách đen');
         console.error('[Blacklist] Error fetching blacklist:', err);
       } finally {
         setLoading(false);
@@ -40,7 +40,7 @@ const Blacklist: React.FC = () => {
 
   const restoreAccess = async (id: string) => {
     if (!isAuthenticated) {
-      setError('Authentication required');
+      setError('Yêu cầu xác thực');
       return;
     }
 
@@ -48,7 +48,7 @@ const Blacklist: React.FC = () => {
       await adminApi.updateUserStatus(id, 'ACTIVE');
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while restoring access');
+      setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi khôi phục quyền truy cập');
       console.error('[Blacklist] Error restoring access:', err);
     }
   };
@@ -65,9 +65,9 @@ const Blacklist: React.FC = () => {
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Blacklist Registry</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Danh sách đen</h1>
           <p className="text-slate-500 mt-1">
-            Review and manage restricted users and suspicious entities.
+            Xem và quản lý các người dùng bị hạn chế và các thực thể nghi ngờ.
           </p>
         </div>
         <div className="flex gap-2">
@@ -78,7 +78,7 @@ const Blacklist: React.FC = () => {
             />
             <input
               type="text"
-              placeholder="Search blacklist..."
+              placeholder="Tìm kiếm danh sách đen..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -101,7 +101,7 @@ const Blacklist: React.FC = () => {
           </div>
           <div>
             <p className="text-rose-800 text-sm font-semibold uppercase tracking-wider">
-              Blocked Accounts
+              Tài khoản bị khóa
             </p>
             <h4 className="text-2xl font-bold text-rose-900">
               {loading ? '—' : blockedCount}
@@ -114,7 +114,7 @@ const Blacklist: React.FC = () => {
           </div>
           <div>
             <p className="text-amber-800 text-sm font-semibold uppercase tracking-wider">
-              Suspicious IPs
+              IP nghi ngờ
             </p>
             <h4 className="text-2xl font-bold text-amber-900">—</h4>
           </div>
@@ -131,16 +131,16 @@ const Blacklist: React.FC = () => {
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Entity
+                  Đối tượng
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Restriction Date
+                  Ngày hạn chế
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Violation Reason
+                  Lý do vi phạm
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                  Actions
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -152,8 +152,8 @@ const Blacklist: React.FC = () => {
                     className="px-6 py-12 text-center text-slate-500 text-sm"
                   >
                     {searchTerm
-                      ? 'No blacklisted users match your search.'
-                      : 'No blacklisted users.'}
+                      ? 'Không có người dùng nào trong danh sách đen khớp với tìm kiếm.'
+                      : 'Không có người dùng nào trong danh sách đen.'}
                   </td>
                 </tr>
               ) : (
@@ -185,7 +185,7 @@ const Blacklist: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-xs font-medium text-slate-500 italic">
-                        Blocked by admin
+                        Bị khóa bởi admin
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -197,7 +197,7 @@ const Blacklist: React.FC = () => {
                         className="flex items-center gap-2 ml-auto text-indigo-600 hover:text-indigo-800 font-semibold text-xs"
                       >
                         <RotateCcw size={14} />
-                        Restore Access
+                        Khôi phục quyền truy cập
                       </button>
                     </td>
                   </tr>
