@@ -20,21 +20,34 @@ const parseJson = async (response: Response): Promise<any> => {
   }
 };
 
-async function fetchAdminAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  let res = await fetch(url, { ...options, credentials, headers: options.headers });
-  if (res.status === 401) {
+/** Một lần chỉ chạy một refresh; các request 401 đồng thời chờ chung kết quả rồi retry. */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function doRefresh(): Promise<boolean> {
+  try {
     const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
       credentials,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
-    if (!refreshRes.ok) {
-      adminOnUnauthorized?.();
-      throw new Error('Phiên đăng nhập hết hạn');
-    }
-    res = await fetch(url, { ...options, credentials, headers: options.headers });
+    return refreshRes.ok;
+  } finally {
+    refreshPromise = null;
   }
+}
+
+async function fetchAdminAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  let res = await fetch(url, { ...options, credentials, headers: options.headers });
+  if (res.status !== 401) return res;
+
+  if (!refreshPromise) refreshPromise = doRefresh();
+  const refreshOk = await refreshPromise;
+  if (!refreshOk) {
+    adminOnUnauthorized?.();
+    throw new Error('Phiên đăng nhập hết hạn');
+  }
+  res = await fetch(url, { ...options, credentials, headers: options.headers });
   if (res.status === 401) {
     adminOnUnauthorized?.();
     throw new Error('Phiên đăng nhập hết hạn');

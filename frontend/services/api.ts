@@ -51,6 +51,23 @@ export function setAuthCallbacks(cbs: { onUnauthorized: () => void; onTokensRefr
 
 const defaultCredentials: RequestCredentials = "include";
 
+/** Một lần chỉ chạy một refresh; các request 401 đồng thời chờ chung kết quả rồi retry. */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function doRefresh(): Promise<boolean> {
+  try {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: "POST",
+      credentials: defaultCredentials,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    return refreshRes.ok;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
 /** Gọi API với cookie (credentials: include); 401 thì thử refresh (cookie) rồi gửi lại. */
 async function fetchWithAuth(url: string, options: RequestInit, _token?: string | null): Promise<Response> {
   console.log(`--- fetchWithAuth: ${options.method || 'GET'} ${url}`);
@@ -64,14 +81,10 @@ async function fetchWithAuth(url: string, options: RequestInit, _token?: string 
     if (res.status !== 401) return res;
 
     console.log(`--- fetchWithAuth 401, attempting refresh`);
-    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-      method: "POST",
-      credentials: defaultCredentials,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    console.log(`--- refresh status: ${refreshRes.status}`);
-    if (!refreshRes.ok) {
+    if (!refreshPromise) refreshPromise = doRefresh();
+    const refreshOk = await refreshPromise;
+    console.log(`--- refresh ok: ${refreshOk}`);
+    if (!refreshOk) {
       onUnauthorized?.();
       return res;
     }

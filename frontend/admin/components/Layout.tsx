@@ -87,6 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [user]);
 
   // SSE: khi có thông báo mới (vd. report) server gửi event → refetch
+  const [streamReconnect, setStreamReconnect] = useState(0);
   useEffect(() => {
     if (!user) return;
     const url = getNotificationStreamUrl();
@@ -101,11 +102,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
     es.onerror = () => {
       es.close();
+      // Reconnect sau 2s (cookie có thể đã được refresh bởi request khác)
+      setTimeout(() => setStreamReconnect((c) => c + 1), 2000);
     };
     return () => {
       es.close();
     };
-  }, [user]);
+  }, [user, streamReconnect]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
